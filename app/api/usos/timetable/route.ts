@@ -89,87 +89,112 @@ export async function GET(req: NextRequest) {
       const consumerKey = session.consumerKey || process.env.USOS_CONSUMER_KEY;
       const consumerSecret = session.consumerSecret || process.env.USOS_CONSUMER_SECRET;
 
-      const validFields = 'start_time|end_time|name|course_name|course_id|classtype_name|room_number|building_name|lecturer_ids|group_number';
+      const validFields = 'start_time|end_time|name|course_name|course_id|classtype_name|room_number|building_name|lecturers|lecturer_ids|group_number';
 
-      let res = await client.signedRequest({
-        url: 'services/tt/student',
-        consumerKey,
-        consumerSecret,
-        token: session.accessToken,
-        tokenSecret: session.accessTokenSecret,
-        params: {
-          start,
-          days,
-          fields: validFields,
-        },
-      });
-
-      if (!res.ok) {
-        console.warn(`tt/student failed (${res.status}), trying services/tt/user...`);
-        res = await client.signedRequest({
-          url: 'services/tt/user',
-          consumerKey,
-          consumerSecret,
-          token: session.accessToken,
-          tokenSecret: session.accessTokenSecret,
-          params: {
-            start,
-            days,
-            fields: validFields,
-          },
-        });
-      }
-
-      if (!res.ok) {
-        console.warn(`tt/user with fields failed (${res.status}), trying tt/student without fields parameter...`);
-        res = await client.signedRequest({
-          url: 'services/tt/student',
-          consumerKey,
-          consumerSecret,
-          token: session.accessToken,
-          tokenSecret: session.accessTokenSecret,
-          params: {
-            start,
-            days,
-          },
-        });
-      }
-
-      if (res.ok) {
-        const rawActivities = await res.json();
-        if (Array.isArray(rawActivities)) {
-          const formatted: USOSActivity[] = rawActivities.map(mapRawActivity);
-
-          return NextResponse.json({
-            activities: formatted,
-            isLive: true,
-            start,
-            days,
-            count: formatted.length,
+      const fetchEndpoint = async (endpoint: string, withFields: boolean) => {
+        try {
+          const params: Record<string, string | number> = { start, days };
+          if (withFields) params.fields = validFields;
+          return await client.signedRequest({
+            url: endpoint,
+            consumerKey,
+            consumerSecret,
+            token: session.accessToken,
+            tokenSecret: session.accessTokenSecret,
+            params,
           });
+        } catch (e) {
+          console.warn(`Request to ${endpoint} threw:`, e);
+          return null;
         }
-      } else {
-        const errText = await res.text().catch(() => '');
-        console.error(`USOS Timetable API returned status ${res.status}:`, errText);
+      };
 
-        if (res.status === 401) {
-          const resp = NextResponse.json({
+      // 1. Try services/tt/student
+      let studentActs: any[] = [];
+      let is401 = false;
+      let lastError = '';
+
+      let res = await fetchEndpoint('services/tt/student', true);
+      if (!res || !res.ok) {
+        if (res?.status === 401) is401 = true;
+        // Retry without fields in case a field name is not supported
+        res = await fetchEndpoint('services/tt/student', false);
+      }
+
+      if (res && res.ok) {
+        try {
+          const parsed = await res.json();
+          if (Array.isArray(parsed)) studentActs = parsed;
+        } catch {}
+      } else if (res) {
+        if (res.status === 401) is401 = true;
+        lastError = await res.text().catch(() => '');
+      }
+
+      // 2. Also try services/tt/user (especially helpful for future weeks, seminars, consultations, or if studentActs is empty)
+      let userActs: any[] = [];
+      if (!is401) {
+        let userRes = await fetchEndpoint('services/tt/user', true);
+        if (!userRes || !userRes.ok) {
+          if (userRes?.status === 401) is401 = true;
+          userRes = await fetchEndpoint('services/tt/user', false);
+        }
+        if (userRes && userRes.ok) {
+          try {
+            const parsed = await userRes.json();
+            if (Array.isArray(parsed)) userActs = parsed;
+          } catch {}
+        }
+      }
+
+      if (is401) {
+        const resp = NextResponse.json(
+          {
             error: 'Sesja USOS wygasła. Zaloguj się ponownie.',
             activities: [],
             isLive: false,
-          });
-          resp.cookies.delete('usos_session');
-          return resp;
-        }
+          },
+          { status: 401 }
+        );
+        resp.cookies.delete('usos_session');
+        return resp;
+      }
 
+      // Merge and deduplicate activities from both endpoints
+      const rawCombined: any[] = [];
+      const seen = new Set<string>();
+
+      for (const act of [...studentActs, ...userActs]) {
+        const nameVal = typeof act.name === 'object' ? act.name?.pl || act.name?.en : act.name;
+        const key = `${act.start_time}_${act.end_time}_${act.course_id || nameVal || ''}_${act.room_number || ''}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          rawCombined.push(act);
+        }
+      }
+
+      if (rawCombined.length > 0 || (res && res.ok)) {
+        const formatted: USOSActivity[] = rawCombined.map(mapRawActivity);
         return NextResponse.json({
-          error: `Serwer USOS PRZ zwrócił błąd (${res.status}): ${errText}`,
+          activities: formatted,
+          isLive: true,
+          start,
+          days,
+          count: formatted.length,
+        });
+      }
+
+      // If both calls failed with non-200, return a 502 Bad Gateway so client knows not to cache empty array
+      return NextResponse.json(
+        {
+          error: lastError || 'Nie udało się pobrać planu z serwera USOS.',
           activities: [],
           isLive: true,
           start,
           days,
-        });
-      }
+        },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({

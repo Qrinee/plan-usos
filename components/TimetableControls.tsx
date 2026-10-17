@@ -71,43 +71,6 @@ export const TimetableControls: React.FC<TimetableControlsProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between md:justify-start space-x-2 sm:space-x-2.5">
-          <div className={`items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] p-0.5 shrink-0 ${viewMode === 'day' ? 'hidden sm:flex' : 'flex'
-            }`}>
-            <button
-              onClick={onPrevWeek}
-              disabled={isNavigatingWeek}
-              className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.12] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7] active:scale-90 transition-all disabled:opacity-40"
-              title="Poprzedni tydzień"
-              aria-label="Poprzedni tydzień"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={onToday}
-              disabled={isNavigatingWeek}
-              className="px-3 py-1 min-h-[32px] sm:min-h-0 text-xs cursor-pointer font-medium text-[#1d1d1f] dark:text-[#f5f5f7] hover:bg-black/[0.06] dark:hover:bg-white/[0.12] rounded-full active:scale-95 transition-all disabled:opacity-40"
-            >
-              Dziś
-            </button>
-            <button
-              onClick={onNextWeek}
-              disabled={isNavigatingWeek}
-              className="w-8 h-8 sm:w-7 sm:h-7 rounded-full flex items-center justify-center cursor-pointer hover:bg-black/[0.06] dark:hover:bg-white/[0.12] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7] active:scale-90 transition-all disabled:opacity-40"
-              title="Następny tydzień"
-              aria-label="Następny tydzień"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-1.5 text-xs sm:text-sm font-semibold text-[#1d1d1f] dark:text-[#f5f5f7] truncate pl-1">
-            <CalendarIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#fa243c] shrink-0 transition-transform ${isNavigatingWeek ? 'animate-spin' : ''}`} />
-            <span key={weekLabel} className={`capitalize anim-filter-fade truncate transition-opacity ${isNavigatingWeek ? 'opacity-60' : ''}`}>
-              {weekLabel}
-            </span>
-          </div>
-        </div>
 
         <div className="flex items-center space-x-2 w-full md:w-auto">
 

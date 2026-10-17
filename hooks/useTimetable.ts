@@ -95,12 +95,16 @@ export function useTimetable() {
       const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
       if (res.ok) {
         const data = await res.json();
-        const acts = data.activities || [];
-        weekCacheRef.current.set(startStr, acts);
-        if (acts.length > 0 && typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
-          } catch { }
+        if (!data.error && data.isLive) {
+          const acts = data.activities || [];
+          if (acts.length > 0) {
+            weekCacheRef.current.set(startStr, acts);
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+              } catch { }
+            }
+          }
         }
       }
     } catch {
@@ -226,7 +230,7 @@ export function useTimetable() {
     const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
 
     const cached = weekCacheRef.current.get(startStr);
-    if (cached) {
+    if (cached && cached.length > 0) {
       setSlideDirection(direction);
       setTransitionKey((prev) => prev + 1);
       setBaseMonday(targetMonday);
@@ -246,8 +250,13 @@ export function useTimetable() {
       const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
       if (!res.ok) throw new Error(`Błąd pobierania (${res.status})`);
       const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+      }
       const newActs = data.activities || [];
-      weekCacheRef.current.set(startStr, newActs);
+      if (data.isLive !== false && !data.error) {
+        weekCacheRef.current.set(startStr, newActs);
+      }
 
       setSlideDirection(direction);
       setTransitionKey((prev) => prev + 1);

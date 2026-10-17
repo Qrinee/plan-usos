@@ -166,28 +166,8 @@ export default function TimetablePage() {
           </div>
         ) : (
           <>
-            <LiveStatusBar
-              activities={filteredActivities}
-              isOfflineLoaded={isOfflineLoaded}
-              lastSyncTime={lastSyncTime}
-            />
 
 
-            <TimetableControls
-              viewMode={viewMode}
-              setViewMode={handleViewModeChange}
-              baseMonday={baseMonday}
-              onPrevWeek={handlePrevWeek}
-              onNextWeek={handleNextWeek}
-              onToday={handleToday}
-              selectedCategory={selectedCategory}
-              setSelectedCategory={handleCategoryChange}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              showWeekend={showWeekend}
-              setShowWeekend={setShowWeekend}
-              isNavigatingWeek={isNavigatingWeek}
-            />
 
             {error && (
               <div className="p-3.5 px-4 rounded-2xl apple-glass border border-[#ff3b30]/30 bg-[#ff3b30]/[0.06] text-[#ff3b30] text-xs flex items-center justify-between shadow-xs">
@@ -295,6 +275,24 @@ export default function TimetablePage() {
           </>
         )}
       </main>
+
+
+
+      <TimetableControls
+        viewMode={viewMode}
+        setViewMode={handleViewModeChange}
+        baseMonday={baseMonday}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onToday={handleToday}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={handleCategoryChange}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        showWeekend={showWeekend}
+        setShowWeekend={setShowWeekend}
+        isNavigatingWeek={isNavigatingWeek}
+      />
       <Navbar
         isLive={isLive}
         user={user}

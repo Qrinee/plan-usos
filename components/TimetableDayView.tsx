@@ -168,31 +168,37 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
 
   const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
-  // Preserve day index synchronously when week changes, but start on Monday when advancing from Friday/weekend
+  const prevBaseMondayRef = useRef<number>(baseMonday.getTime());
+
+  // Ensure advancing forward or moving from Friday/weekend starts on Monday of the new week
   useIsomorphicLayoutEffect(() => {
     const existsInCurrentWeek = currentWeekDays.some((d) => d.dateStr === selectedDateStr);
     if (!existsInCurrentWeek && currentWeekDays.length > 0) {
-      const now = new Date();
-      const day = now.getDay();
-      const isWeekendOrFriday = day === 5 || day === 6 || day === 0;
-      const isFromToday = selectedDateStr === todayStr;
-      const isAhead = baseMonday.getTime() > now.getTime();
+      const isMovingForward = baseMonday.getTime() > prevBaseMondayRef.current;
+      prevBaseMondayRef.current = baseMonday.getTime();
+
+      const prevDate = new Date(selectedDateStr);
+      const prevDayOfWeek = prevDate.getDay(); // 0 = Sun, 5 = Fri, 6 = Sat
+      const wasFridayOrWeekend = prevDayOfWeek === 5 || prevDayOfWeek === 6 || prevDayOfWeek === 0;
 
       let targetDay: (typeof currentWeekDays)[0];
-      if ((isFromToday && isWeekendOrFriday) || (isWeekendOrFriday && isAhead && (!selectedDateStr || selectedDateStr === todayStr))) {
-        targetDay = currentWeekDays[0]; // Poniedziałek
+      if (isMovingForward || wasFridayOrWeekend) {
+        targetDay = currentWeekDays[0]; // Always Monday for new week!
       } else {
-        const prevDate = new Date(selectedDateStr);
-        let dayIndex = (prevDate.getDay() + 6) % 7;
-        if (dayIndex >= currentWeekDays.length || isNaN(dayIndex)) dayIndex = 0;
+        let dayIndex = (prevDayOfWeek + 6) % 7;
+        if (dayIndex >= currentWeekDays.length || isNaN(dayIndex)) {
+          dayIndex = currentWeekDays.length - 1;
+        }
         targetDay = currentWeekDays[dayIndex] || currentWeekDays[0];
       }
 
       if (targetDay) {
         setSelectedDateStr(targetDay.dateStr);
       }
+    } else {
+      prevBaseMondayRef.current = baseMonday.getTime();
     }
-  }, [baseMonday, currentWeekDays, selectedDateStr, todayStr]);
+  }, [baseMonday, currentWeekDays, selectedDateStr]);
 
   const activeDay = allDays.find((d) => d.dateStr === selectedDateStr) || currentWeekDays[0];
 
@@ -538,6 +544,8 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
     } else {
       const nextMonday = new Date(baseMonday);
       nextMonday.setDate(baseMonday.getDate() + 7);
+      const nextMondayStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
+      setSelectedDateStr(nextMondayStr);
       if (onNavigateToMonday) {
         onNavigateToMonday(nextMonday);
       } else if (onNextWeek) {
@@ -553,6 +561,11 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
     } else {
       const prevMonday = new Date(baseMonday);
       prevMonday.setDate(baseMonday.getDate() - 7);
+      const lastDayOffset = showWeekend ? 6 : 4;
+      const targetPrevDate = new Date(prevMonday);
+      targetPrevDate.setDate(prevMonday.getDate() + lastDayOffset);
+      const targetPrevDateStr = `${targetPrevDate.getFullYear()}-${(targetPrevDate.getMonth() + 1).toString().padStart(2, '0')}-${targetPrevDate.getDate().toString().padStart(2, '0')}`;
+      setSelectedDateStr(targetPrevDateStr);
       if (onNavigateToMonday) {
         onNavigateToMonday(prevMonday);
       } else if (onPrevWeek) {
@@ -835,7 +848,12 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
 
         {/* Content Rendering: Smooth Animated Day Container */}
         <div key={`day-content-${selectedDateStr}`} className="anim-timeline-enter">
-          {activitiesToDisplay.length === 0 ? (
+          {isNavigatingWeek ? (
+            <div className="py-24 text-center flex flex-col items-center justify-center space-y-3 min-h-[340px]">
+              <div className="w-8 h-8 rounded-full border-2 border-[#fa243c] border-t-transparent animate-spin" />
+              <p className="text-xs text-[#86868b] font-medium">Pobieranie planu zajęć z USOS PRZ...</p>
+            </div>
+          ) : activitiesToDisplay.length === 0 ? (
             <div className="py-20 text-center text-[#86868b] flex flex-col items-center justify-center min-h-[340px]">
               <CheckCircle className="w-12 h-12 mx-auto mb-2 text-[#86868b]/40" />
               <p className="text-base font-semibold text-[#1d1d1f] dark:text-[#f5f5f7]">
