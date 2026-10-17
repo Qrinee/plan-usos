@@ -98,16 +98,7 @@ export default function TimetablePage() {
         </div>
       )}
 
-      <Navbar
-        isLive={isLive}
-        user={user}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
-        onExportICal={handleExportICal}
-        darkMode={darkMode}
-        setDarkMode={toggleDarkMode}
-      />
+
 
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 space-y-3 sm:space-y-4">
         {authBanner && (
@@ -180,12 +171,7 @@ export default function TimetablePage() {
               isOfflineLoaded={isOfflineLoaded}
               lastSyncTime={lastSyncTime}
             />
-            {activities.length > 0 && (
-              <UpcomingBanner
-                activities={activities}
-                onSelectActivity={(act) => setSelectedActivity(act)}
-              />
-            )}
+
 
             <TimetableControls
               viewMode={viewMode}
@@ -309,7 +295,16 @@ export default function TimetablePage() {
           </>
         )}
       </main>
-
+      <Navbar
+        isLive={isLive}
+        user={user}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+        onExportICal={handleExportICal}
+        darkMode={darkMode}
+        setDarkMode={toggleDarkMode}
+      />
       <footer className="relative z-10 mt-auto border-t border-black/[0.04] dark:border-white/[0.06] apple-glass py-5 sm:py-6 text-[11px] text-[#86868b] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] sm:pb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center space-x-2">
@@ -369,6 +364,7 @@ export default function TimetablePage() {
       />
 
       <PwaInstallPrompt />
+
     </div>
   );
 }

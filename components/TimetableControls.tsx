@@ -62,30 +62,7 @@ export const TimetableControls: React.FC<TimetableControlsProps> = ({
 
   return (
     <div className="space-y-3 w-full">
-      <div className="relative z-10 flex items-center space-x-2 overflow-x-auto scrollbar-none touch-momentum p-1.5 px-2.5 sm:px-3 rounded-2xl apple-glass shadow-xs text-xs">
-        <div className="flex items-center space-x-1.5 pr-2 border-r border-black/[0.08] dark:border-white/[0.1] shrink-0 text-[#1d1d1f] dark:text-[#f5f5f7] font-semibold">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-[#fa243c]" />
-          <span className="hidden sm:inline text-xs">Kategorie:</span>
-        </div>
 
-        <div className="flex items-center space-x-1.5 overflow-x-auto scrollbar-none touch-momentum py-0.5">
-          {CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 sm:px-3.5 py-1.5 min-h-[34px] cursor-pointer rounded-full text-xs shrink-0 flex items-center justify-center transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] active:scale-95 ${isSelected
-                  ? 'bg-gradient-to-r from-[#fa243c] to-[#fb5c74] text-white shadow-md shadow-[#fa243c]/30 font-semibold scale-[1.03] anim-pill-pop'
-                  : 'bg-white/70 dark:bg-white/[0.08] hover:bg-white dark:hover:bg-white/[0.16] text-[#1d1d1f] dark:text-[#f5f5f7] border border-black/[0.06] dark:border-white/[0.12] font-medium shadow-2xs hover:scale-[1.02]'
-                  }`}
-              >
-                {cat.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="relative flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3 apple-card rounded-3xl p-3 sm:px-4 sm:py-3 overflow-hidden">
         {isNavigatingWeek && (
@@ -95,9 +72,8 @@ export const TimetableControls: React.FC<TimetableControlsProps> = ({
         )}
 
         <div className="flex items-center justify-between md:justify-start space-x-2 sm:space-x-2.5">
-          <div className={`items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] p-0.5 shrink-0 ${
-            viewMode === 'day' ? 'hidden sm:flex' : 'flex'
-          }`}>
+          <div className={`items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] p-0.5 shrink-0 ${viewMode === 'day' ? 'hidden sm:flex' : 'flex'
+            }`}>
             <button
               onClick={onPrevWeek}
               disabled={isNavigatingWeek}
