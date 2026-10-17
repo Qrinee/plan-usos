@@ -47,7 +47,7 @@ export const TimetableControls: React.FC<TimetableControlsProps> = ({
 }) => {
   return (
     <div
-      className={`fixed bottom-15 sm:bottom-5 inset-x-0 mx-auto px-3 max-w-lg z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom,0px)] md:hidden ${className}`}
+      className={`fixed bottom-8 sm:bottom-5 inset-x-0 mx-auto px-3 max-w-lg z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom,0px)] md:hidden ${className}`}
     >
       <div className="pointer-events-auto flex items-center justify-between gap-1 sm:gap-2 p-1.5 rounded-full bg-white/85 dark:bg-[#1c1c1e]/90 backdrop-blur-2xl border border-black/[0.08] dark:border-white/[0.12] shadow-[0_12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6)] ring-1 ring-black/[0.03] dark:ring-white/[0.05]">
         {/* Segmented View Mode Switcher: Siatka | Dzień | Lista */}
