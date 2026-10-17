@@ -282,9 +282,8 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
             <p className="text-[11px] text-[#86868b] mt-0.5">
               {activeDayActivities.length === 0
                 ? 'Dzień wolny od zajęć dydaktycznych'
-                : `${activeDayActivities.length} ${
-                    activeDayActivities.length === 1 ? 'zajęcia' : 'zajęć'
-                  } zaplanowanych`}
+                : `${activeDayActivities.length} ${activeDayActivities.length === 1 ? 'zajęcia' : 'zajęć'
+                } zaplanowanych`}
             </p>
           </div>
 

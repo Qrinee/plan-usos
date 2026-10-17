@@ -65,9 +65,8 @@ export default function TimetablePage() {
 
   return (
     <div
-      className={`min-h-screen pt-safe-top md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
-        customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
-      }`}
+      className={`min-h-screen pt-safe-top md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
+        }`}
     >
       {/* Background Layer: Custom Image Wallpaper or Dynamic Aura */}
       {customBg ? (
@@ -116,11 +115,10 @@ export default function TimetablePage() {
         {/* Auth Notification Banner */}
         {authBanner && (
           <div
-            className={`p-3.5 px-4 rounded-2xl apple-glass border text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-300 ${
-              authBanner.type === 'success'
-                ? 'border-[#34c759]/30 text-[#34c759] bg-[#34c759]/[0.08]'
-                : 'border-[#ff3b30]/30 text-[#ff3b30] bg-[#ff3b30]/[0.08]'
-            }`}
+            className={`p-3.5 px-4 rounded-2xl apple-glass border text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-300 ${authBanner.type === 'success'
+              ? 'border-[#34c759]/30 text-[#34c759] bg-[#34c759]/[0.08]'
+              : 'border-[#ff3b30]/30 text-[#ff3b30] bg-[#ff3b30]/[0.08]'
+              }`}
           >
             <div className="flex items-center space-x-2">
               {authBanner.type === 'success' ? (

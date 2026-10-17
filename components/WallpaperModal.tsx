@@ -99,33 +99,30 @@ export const WallpaperModal: React.FC<WallpaperModalProps> = ({
             <button
               type="button"
               onClick={() => setTab('presets')}
-              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
-                tab === 'presets'
+              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${tab === 'presets'
                   ? 'bg-white dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-[#f5f5f7] shadow-xs font-semibold'
                   : 'text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7]'
-              }`}
+                }`}
             >
               <span>Galeria</span>
             </button>
             <button
               type="button"
               onClick={() => setTab('custom')}
-              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
-                tab === 'custom'
+              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${tab === 'custom'
                   ? 'bg-white dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-[#f5f5f7] shadow-xs font-semibold'
                   : 'text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7]'
-              }`}
+                }`}
             >
               <span>Własne tło</span>
             </button>
             <button
               type="button"
               onClick={() => setTab('adjust')}
-              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
-                tab === 'adjust'
+              className={`py-1.5 px-3 rounded-full text-xs font-medium transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${tab === 'adjust'
                   ? 'bg-white dark:bg-[#2c2c2e] text-[#1d1d1f] dark:text-[#f5f5f7] shadow-xs font-semibold'
                   : 'text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7]'
-              }`}
+                }`}
             >
               <Sliders className="w-3.5 h-3.5" />
               <span>Efekty</span>

@@ -82,7 +82,7 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({
   return (
     <div
       ref={timelineScrollRef}
-      className="mt-3 overflow-y-auto max-h-[min(580px,calc(100dvh-270px))] min-h-[380px] sm:max-h-[640px] pr-1 scrollbar-thin select-none overscroll-contain touch-pan-y"
+      className="mt-3 overflow-y-auto max-h-[min(980px,calc(100dvh-170px))] min-h-[380px] sm:max-h-[640px] pr-1 scrollbar-thin select-none overscroll-contain touch-pan-y"
     >
       <div className="relative flex" style={{ height: TOTAL_TIMELINE_HEIGHT }}>
         {/* Left Column: Hours Axis (07:00..21:00) */}
