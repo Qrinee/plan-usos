@@ -24,6 +24,11 @@ export interface USOSLecturer {
   formatted_name?: string;
 }
 
+export interface GeoLocation {
+  lat: number;
+  long: number;
+}
+
 export interface USOSActivity {
   id: string;
   type: string;
@@ -38,6 +43,8 @@ export interface USOSActivity {
   room_id?: string;
   building_name?: LangText | string;
   building_id?: string;
+  building_address?: string;
+  building_location?: GeoLocation | null;
   lecturer_ids?: number[];
   lecturer_names?: string[];
   lecturers?: USOSLecturer[];

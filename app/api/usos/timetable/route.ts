@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { USOSOAuthClient } from '@/lib/usos/oauth';
 import { ClassType, USOSActivity, USOSLecturer } from '@/lib/usos/types';
+import { extractBuildingCode, resolvePRZBuildings, PRZBuildingData } from '@/lib/usos/geo';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,8 +178,25 @@ function normalizeDateStr(d: string): string {
   return d.includes('T') ? d : d.replace(' ', 'T');
 }
 
-function mapRawActivity(act: any, index: number, lecturerMap?: Map<string, USOSLecturerInfo>): USOSActivity {
+function mapRawActivity(
+  act: any,
+  index: number,
+  lecturerMap?: Map<string, USOSLecturerInfo>,
+  buildingMap?: Map<string, PRZBuildingData>
+): USOSActivity {
   const { category, color } = assignCategoryAndColor(act);
+
+  const rawBuildingName = typeof act.building_name === 'object' ? act.building_name?.pl || act.building_name?.en : act.building_name;
+  const buildingCode = extractBuildingCode(act.building_id, rawBuildingName, act.room_number);
+  const buildingInfo = buildingCode ? buildingMap?.get(buildingCode) : undefined;
+
+  const resolvedBuildingName =
+    buildingInfo?.name ||
+    act.building_name ||
+    (buildingCode ? `Budynek ${buildingCode}` : 'Politechnika Rzeszowska');
+
+  const resolvedBuildingAddress = buildingInfo?.address;
+  const resolvedBuildingLocation = buildingInfo?.location;
 
   const activityLecturers: USOSLecturer[] = [];
   const activityLecturerNames: string[] = [];
@@ -227,7 +245,11 @@ function mapRawActivity(act: any, index: number, lecturerMap?: Map<string, USOSL
     course_id: act.course_id,
     classtype_name: act.classtype_name || act.classtype || category,
     room_number: act.room_number,
-    building_name: act.building_name,
+    room_id: act.room_id,
+    building_id: act.building_id || buildingCode || undefined,
+    building_name: resolvedBuildingName,
+    building_address: resolvedBuildingAddress,
+    building_location: resolvedBuildingLocation,
     lecturer_ids: act.lecturer_ids,
     lecturer_names: activityLecturerNames.length > 0 ? activityLecturerNames : undefined,
     lecturers: activityLecturers.length > 0 ? activityLecturers : undefined,
@@ -259,8 +281,8 @@ export async function GET(req: NextRequest) {
       const consumerKey = session.consumerKey || process.env.USOS_CONSUMER_KEY;
       const consumerSecret = session.consumerSecret || process.env.USOS_CONSUMER_SECRET;
 
-      const standardFields = 'type|start_time|end_time|name|course_id|classtype_name|room_number|building_name|lecturer_ids|group_number';
-      const fallbackFields = 'start_time|end_time|name|room_number|lecturer_ids';
+      const standardFields = 'type|start_time|end_time|name|course_id|classtype_name|room_number|room_id|building_name|building_id|lecturer_ids|group_number';
+      const fallbackFields = 'start_time|end_time|name|room_number|room_id|building_name|building_id|lecturer_ids';
 
       const fetchEndpoint = async (endpoint: string, fieldsToUse?: string) => {
         try {
@@ -370,8 +392,10 @@ export async function GET(req: NextRequest) {
       }
 
       if (rawCombined.length > 0 || (res && res.ok)) {
-        // Collect all lecturer IDs
+        // Collect all lecturer IDs and building codes
         const allLecturerIds: (string | number)[] = [];
+        const allBuildingCodes: string[] = [];
+
         for (const act of rawCombined) {
           if (Array.isArray(act.lecturer_ids)) {
             allLecturerIds.push(...act.lecturer_ids);
@@ -383,22 +407,29 @@ export async function GET(req: NextRequest) {
               }
             }
           }
+
+          const rawBName = typeof act.building_name === 'object' ? act.building_name?.pl || act.building_name?.en : act.building_name;
+          const bCode = extractBuildingCode(act.building_id, rawBName, act.room_number);
+          if (bCode) allBuildingCodes.push(bCode);
         }
 
-        console.log('Total unique lecturer IDs to resolve:', Array.from(new Set(allLecturerIds)));
+        const [lecturerMap, buildingMap] = await Promise.all([
+          resolveLecturers(
+            client,
+            consumerKey,
+            consumerSecret,
+            session.accessToken,
+            session.accessTokenSecret,
+            allLecturerIds
+          ),
+          resolvePRZBuildings(allBuildingCodes),
+        ]);
 
-        const lecturerMap = await resolveLecturers(
-          client,
-          consumerKey,
-          consumerSecret,
-          session.accessToken,
-          session.accessTokenSecret,
-          allLecturerIds
+        console.log('Resolved geo buildings map size:', buildingMap.size);
+
+        const formatted: USOSActivity[] = rawCombined.map((act, idx) =>
+          mapRawActivity(act, idx, lecturerMap, buildingMap)
         );
-
-        console.log('Resolved lecturers map size:', lecturerMap.size);
-
-        const formatted: USOSActivity[] = rawCombined.map((act, idx) => mapRawActivity(act, idx, lecturerMap));
         if (formatted.length > 0) {
           console.log('Sample formatted activity lecturers:', formatted[0]?.lecturer_names);
         }

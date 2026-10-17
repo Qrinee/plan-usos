@@ -18,6 +18,7 @@ import {
 import { USOSActivity } from '@/lib/usos/types';
 import { generateICalendar } from '@/lib/usos/ical';
 import { parseDate } from '@/lib/utils/date';
+import { extractBuildingCode, KNOWN_PRZ_BUILDINGS } from '@/lib/usos/geo';
 
 interface ClassDetailModalProps {
   activity: USOSActivity | null;
@@ -127,33 +128,33 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
       : activity.classtype_name?.pl || activity.category || 'Zajęcia';
 
   const room = activity.room_number || '';
-  const building =
+  const rawBuildingName =
     typeof activity.building_name === 'string'
       ? activity.building_name
       : activity.building_name?.pl || 'Politechnika Rzeszowska';
 
+  const buildingCode = extractBuildingCode(activity.building_id, rawBuildingName, room);
+  const knownGeo = buildingCode ? KNOWN_PRZ_BUILDINGS[buildingCode] : undefined;
+
+  const buildingTitle =
+    activity.building_name && activity.building_name !== 'Politechnika Rzeszowska'
+      ? (typeof activity.building_name === 'string' ? activity.building_name : activity.building_name.pl)
+      : knownGeo?.name || (buildingCode ? `Budynek ${buildingCode}` : 'Politechnika Rzeszowska');
+
+  const buildingShortName = knownGeo?.shortName || (buildingCode ? `Budynek ${buildingCode}` : 'Politechnika Rzeszowska');
+  const buildingAddress = activity.building_address || knownGeo?.address || 'al. Powstańców Warszawy 12, 35-959 Rzeszów';
+  const location = activity.building_location || knownGeo?.location || null;
+
   const baseColor = activity.color || '#fa243c';
 
-  let specificBuilding = '';
-  if (building && building !== 'Politechnika Rzeszowska') {
-    specificBuilding = building;
-  } else if (room) {
-    const match = room.match(/^([A-Za-z]+)[-\s]/);
-    if (match) {
-      specificBuilding = `Budynek ${match[1].toUpperCase()}`;
-    }
-  }
+  const googleMapsUrl = location
+    ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.long}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${buildingShortName}, Politechnika Rzeszowska, Rzeszów`)}`;
 
-  const mapParts: string[] = [];
-  if (specificBuilding) {
-    mapParts.push(specificBuilding);
-  }
-  mapParts.push('Politechnika Rzeszowska');
-  mapParts.push('Rzeszów');
-  const mapSearchQuery = mapParts.join(', ');
+  const appleMapsUrl = location
+    ? `https://maps.apple.com/?daddr=${location.lat},${location.long}&q=${encodeURIComponent(buildingShortName)}`
+    : `https://maps.apple.com/?q=${encodeURIComponent(`${buildingShortName}, Politechnika Rzeszowska, Rzeszów`)}`;
 
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchQuery)}`;
-  const appleMapsUrl = `https://maps.apple.com/?q=${encodeURIComponent(mapSearchQuery)}`;
   const defaultMapsUrl = isAppleDevice ? appleMapsUrl : googleMapsUrl;
 
   const handleDownloadSingleICal = () => {
@@ -258,7 +259,7 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                 window.open(defaultMapsUrl, '_blank', 'noopener,noreferrer');
               }
             }}
-            title={`Kliknij, aby nawigować w ${isAppleDevice ? 'Apple Maps' : 'Google Maps'}: ${mapSearchQuery}`}
+            title={`Kliknij, aby nawigować w ${isAppleDevice ? 'Apple Maps' : 'Google Maps'}: ${buildingShortName}`}
             className="group/map flex flex-col justify-between p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] hover:bg-black/[0.05] dark:hover:bg-white/[0.06] border border-black/[0.03] dark:border-white/[0.04] hover:border-[#fa243c]/30 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] cursor-pointer shadow-xs gap-3"
           >
             <div className="flex items-start space-x-3.5 min-w-0">
@@ -271,17 +272,27 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                     Miejsce zajęć
                   </h4>
                   <span className="text-[10px] text-[#fa243c] font-medium flex items-center space-x-1">
-                    <span>• Nawiguj</span>
+                    <span>• Nawiguj GPS</span>
                     <Navigation className="w-2.5 h-2.5 inline" />
                   </span>
                 </div>
                 <p className="font-semibold text-sm text-[#1d1d1f] dark:text-[#f5f5f7] mt-0.5 group-hover/map:text-[#fa243c] transition-colors">
                   {room ? `Sala: ${room}` : 'Sala niepodana'}
                 </p>
-                <p className="text-xs text-[#86868b] mt-0.5 flex items-center truncate">
-                  <Building2 className="w-3.5 h-3.5 mr-1 inline opacity-70 shrink-0" />
-                  <span className="truncate">{building}</span>
+                <p className="text-xs text-[#1d1d1f] dark:text-[#f5f5f7] font-medium mt-1 flex items-start">
+                  <Building2 className="w-3.5 h-3.5 mr-1.5 inline opacity-70 shrink-0 mt-0.5 text-[#fa243c]" />
+                  <span className="leading-snug">{buildingTitle}</span>
                 </p>
+                <p className="text-[11px] text-[#86868b] mt-0.5 pl-5">
+                  {buildingAddress}
+                </p>
+                {location && (
+                  <div className="mt-1.5 pl-5 flex items-center space-x-2">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-black/[0.04] dark:bg-white/[0.06] text-[#86868b]">
+                      GPS: {location.lat.toFixed(5)}, {location.long.toFixed(5)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
