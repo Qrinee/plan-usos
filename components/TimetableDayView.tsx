@@ -29,6 +29,7 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   onSelectActivity,
   onPrevWeek,
   onNextWeek,
+  onToday,
   onNavigateToMonday,
   isNavigatingWeek = false,
 }) => {
@@ -251,6 +252,7 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
         onSelectDay={handleDaySelect}
         onPrevWeek={onPrevWeek}
         onNextWeek={onNextWeek}
+        onToday={onToday}
         onNavigateToMonday={onNavigateToMonday}
       />
 

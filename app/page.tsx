@@ -65,7 +65,7 @@ export default function TimetablePage() {
 
   return (
     <div
-      className={`min-h-screen pt-4 sm:pt-6 md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
+      className={`min-h-screen pt-safe-top md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
         customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
       }`}
     >
@@ -105,11 +105,14 @@ export default function TimetablePage() {
           onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
           darkMode={darkMode}
           setDarkMode={toggleDarkMode}
+          viewMode={viewMode}
+          setViewMode={handleViewModeChange}
+          onOpenSearch={() => setIsSearchOpen(true)}
         />
       </div>
 
       {/* Main Content Area */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 space-y-3 sm:space-y-4">
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 pb-24 sm:pb-28 md:pb-8 space-y-3 sm:space-y-4">
         {/* Auth Notification Banner */}
         {authBanner && (
           <div
@@ -233,28 +236,18 @@ export default function TimetablePage() {
         )}
       </main>
 
-      {/* Floating Timetable Controls */}
+      {/* Sticky Mobile Floating Controls Dock */}
       <TimetableControls
         viewMode={viewMode}
         setViewMode={handleViewModeChange}
-        isNavigatingWeek={isNavigatingWeek}
-        baseMonday={baseMonday}
-        onPrevWeek={handlePrevWeek}
-        onNextWeek={handleNextWeek}
-        onToday={handleToday}
+        isLive={isLive}
+        user={user}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+        onOpenSearch={() => setIsSearchOpen(true)}
+        darkMode={darkMode}
+        setDarkMode={toggleDarkMode}
       />
-
-      {/* Bottom Navigation Bar for Mobile (Phone) */}
-      <div className="block md:hidden w-full">
-        <Navbar
-          isLive={isLive}
-          user={user}
-          onOpenSettings={() => setIsSettingsOpen(true)}
-          onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
-          darkMode={darkMode}
-          setDarkMode={toggleDarkMode}
-        />
-      </div>
 
       {/* Footer */}
       <Footer />

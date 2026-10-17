@@ -72,8 +72,28 @@ body {
   padding-top: env(safe-area-inset-top, 0px);
 }
 
+.pt-safe-top {
+  padding-top: max(calc(env(safe-area-inset-top, 0px) + 1.25rem), 3.75rem);
+}
+
+@media (min-width: 768px) {
+  .pt-safe-top {
+    padding-top: 0px;
+  }
+}
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-safe-dock {
+  padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 5.5rem), 6rem);
+}
+
+@media (min-width: 768px) {
+  .pb-safe-dock {
+    padding-bottom: 2rem;
+  }
 }
 
 .pl-safe {
