@@ -111,7 +111,7 @@ export default function TimetablePage() {
       </div>
 
       {/* Main Content Area */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 pb-24 sm:pb-28 md:pb-8 space-y-3 sm:space-y-4">
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] md:pb-10 space-y-3 sm:space-y-4">
         {/* Auth Notification Banner */}
         {authBanner && (
           <div
