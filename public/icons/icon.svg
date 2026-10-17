@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fa243c" />
+      <stop offset="50%" stop-color="#fb5c74" />
+      <stop offset="100%" stop-color="#7c3aed" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#fa243c" flood-opacity="0.35" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded rect -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)" />
+
+  <!-- Inner subtle border -->
+  <rect x="4" y="4" width="504" height="504" rx="111" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="4" />
+
+  <!-- Graduation Cap & Schedule Motif -->
+  <g filter="url(#shadow)" fill="#ffffff" transform="translate(0, -10)">
+    <!-- Rhombus top of cap -->
+    <polygon points="256,150 410,210 256,270 102,210" />
+    
+    <!-- Skullcap underneath -->
+    <path d="M 160,240 L 160,305 C 160,345 352,345 352,305 L 352,240 C 322,258 289,268 256,268 C 223,268 190,258 160,240 Z" opacity="0.95" />
+
+    <!-- Tassel hanging from center -->
+    <path d="M 256,210 Q 150,215 130,270 L 130,350" fill="none" stroke="#ffffff" stroke-width="10" stroke-linecap="round" />
+    <!-- Tassel brush -->
+    <circle cx="130" cy="358" r="14" fill="#ffffff" />
+    <polygon points="120,364 140,364 144,395 116,395" />
+  </g>
+
+  <!-- Small PRZ calendar emblem at bottom -->
+  <g fill="#ffffff" opacity="0.85" transform="translate(186, 385) scale(0.7)">
+    <rect x="0" y="10" width="200" height="70" rx="16" fill="rgba(255,255,255,0.25)" />
+    <circle cx="40" cy="45" r="8" fill="#ffffff" />
+    <circle cx="100" cy="45" r="8" fill="#ffffff" />
+    <circle cx="160" cy="45" r="8" fill="#ffffff" />
+  </g>
+</svg>

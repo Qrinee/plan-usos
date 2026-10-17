@@ -1,0 +1,372 @@
+'use client';
+
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { USOSActivity, USOSUser } from '@/lib/usos/types';
+import { generateICalendar } from '@/lib/usos/ical';
+import { getMonday } from '@/lib/utils/date';
+import { ViewMode } from '@/components/TimetableControls';
+
+export function useTimetable() {
+  const [baseMonday, setBaseMonday] = useState<Date>(() => getMonday(new Date()));
+  const [activities, setActivities] = useState<USOSActivity[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isNavigatingWeek, setIsNavigatingWeek] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [authBanner, setAuthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const weekCacheRef = useRef<Map<string, USOSActivity[]>>(new Map());
+
+  const [isLive, setIsLive] = useState(false);
+  const [user, setUser] = useState<USOSUser | null>(null);
+  const [isOfflineLoaded, setIsOfflineLoaded] = useState<boolean>(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  const [viewMode, setViewMode] = useState<ViewMode>('week');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showWeekend, setShowWeekend] = useState<boolean>(false);
+
+  const [slideDirection, setSlideDirection] = useState<'right' | 'left' | 'fade'>('fade');
+  const [transitionKey, setTransitionKey] = useState<number>(0);
+
+  const [selectedActivity, setSelectedActivity] = useState<USOSActivity | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Load last sync timestamp and cached user on mount
+  useEffect(() => {
+    try {
+      const savedSync = localStorage.getItem('usos_last_sync_time');
+      if (savedSync) setLastSyncTime(savedSync);
+
+      const cachedUser = localStorage.getItem('usos_cached_user');
+      if (cachedUser) {
+        const parsed = JSON.parse(cachedUser);
+        if (parsed) setUser(parsed);
+      }
+    } catch {}
+  }, []);
+
+  const checkAuth = useCallback(async () => {
+    try {
+      const res = await fetch('/api/auth/status');
+      if (res.ok) {
+        const data = await res.json();
+        const authed = data.authenticated && data.mode === 'live';
+        setIsLive(authed);
+        setUser(data.user || null);
+        if (data.user) {
+          try {
+            localStorage.setItem('usos_cached_user', JSON.stringify(data.user));
+          } catch {}
+        }
+        return authed;
+      }
+    } catch (err) {
+      console.warn('Failed checking auth status, falling back to cached user:', err);
+      try {
+        const cachedUser = localStorage.getItem('usos_cached_user');
+        if (cachedUser) {
+          setUser(JSON.parse(cachedUser));
+          setIsLive(true);
+        }
+      } catch {}
+    }
+    return false;
+  }, []);
+
+  const fetchInitialTimetable = useCallback(async (monday: Date) => {
+    setInitialLoading(true);
+    setError(null);
+    const startStr = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
+
+    try {
+      const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
+      if (!res.ok) {
+        throw new Error(`Błąd pobierania planu lekcji (${res.status})`);
+      }
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+      }
+      const acts = data.activities || [];
+      weekCacheRef.current.set(startStr, acts);
+      setActivities(acts);
+      setIsLive(data.isLive || false);
+      setIsOfflineLoaded(false);
+
+      // Save offline snapshot in localStorage
+      try {
+        if (acts.length > 0) {
+          localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+          const nowIso = new Date().toISOString();
+          localStorage.setItem('usos_last_sync_time', nowIso);
+          setLastSyncTime(nowIso);
+        }
+      } catch (storageErr) {
+        console.warn('Could not cache timetable in localStorage:', storageErr);
+      }
+    } catch (err: any) {
+      console.warn('Error fetching timetable, attempting offline cache:', err);
+
+      // Try reading from offline cache for this week
+      try {
+        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        if (cachedRaw) {
+          const cachedActs = JSON.parse(cachedRaw);
+          weekCacheRef.current.set(startStr, cachedActs);
+          setActivities(cachedActs);
+          setIsOfflineLoaded(true);
+          setIsLive(true); // Allow viewing offline
+          setError(null);
+          return;
+        }
+
+        // If specific week not cached, search for any cached week so student isn't left empty-handed
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('usos_offline_timetable_')) {
+            const fallbackRaw = localStorage.getItem(key);
+            if (fallbackRaw) {
+              const fallbackActs = JSON.parse(fallbackRaw);
+              setActivities(fallbackActs);
+              setIsOfflineLoaded(true);
+              setIsLive(true);
+              setError(null);
+              return;
+            }
+          }
+        }
+      } catch (cacheErr) {
+        console.error('Failed reading offline cache:', cacheErr);
+      }
+
+      setError(err.message || 'Brak połączenia z siecią. Włącz internet, aby pobrać plan.');
+    } finally {
+      setInitialLoading(false);
+    }
+  }, []);
+
+  const navigateToWeek = useCallback(async (targetMonday: Date, direction: 'right' | 'left' | 'fade') => {
+    const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
+
+    const cached = weekCacheRef.current.get(startStr);
+    if (cached) {
+      setSlideDirection(direction);
+      setTransitionKey((prev) => prev + 1);
+      setBaseMonday(targetMonday);
+      setActivities(cached);
+      return;
+    }
+
+    setIsNavigatingWeek(true);
+    try {
+      const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
+      if (!res.ok) throw new Error(`Błąd pobierania (${res.status})`);
+      const data = await res.json();
+      const newActs = data.activities || [];
+      weekCacheRef.current.set(startStr, newActs);
+
+      setSlideDirection(direction);
+      setTransitionKey((prev) => prev + 1);
+      setBaseMonday(targetMonday);
+      setActivities(newActs);
+      if (data.isLive !== undefined) setIsLive(data.isLive);
+      setIsOfflineLoaded(false);
+
+      try {
+        if (newActs.length > 0) {
+          localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(newActs));
+          const nowIso = new Date().toISOString();
+          localStorage.setItem('usos_last_sync_time', nowIso);
+          setLastSyncTime(nowIso);
+        }
+      } catch {}
+    } catch (err: any) {
+      console.warn('Failed to navigate week via network, checking offline storage:', err);
+      try {
+        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        if (cachedRaw) {
+          const cachedActs = JSON.parse(cachedRaw);
+          weekCacheRef.current.set(startStr, cachedActs);
+          setSlideDirection(direction);
+          setTransitionKey((prev) => prev + 1);
+          setBaseMonday(targetMonday);
+          setActivities(cachedActs);
+          setIsOfflineLoaded(true);
+          return;
+        }
+      } catch {}
+
+      setError(err.message || 'Nie udało się pobrać wybranego tygodnia');
+    } finally {
+      setIsNavigatingWeek(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const auth = params.get('auth');
+      const authError = params.get('auth_error');
+
+      if (auth === 'success') {
+        setAuthBanner({
+          type: 'success',
+          message: 'Pomyślnie połączono z USOS Politechniki Rzeszowskiej!',
+        });
+        window.history.replaceState({}, '', '/');
+        checkAuth().then(() => fetchInitialTimetable(baseMonday));
+      } else if (authError) {
+        setAuthBanner({
+          type: 'error',
+          message: `Błąd autoryzacji USOS: ${decodeURIComponent(authError).replace(/_/g, ' ')}`,
+        });
+        window.history.replaceState({}, '', '/');
+      }
+    }
+  }, [baseMonday, checkAuth, fetchInitialTimetable]);
+
+  useEffect(() => {
+    checkAuth();
+    fetchInitialTimetable(baseMonday);
+
+    try {
+      const savedView = localStorage.getItem('usos_preferred_view') as ViewMode | null;
+      if (savedView && (savedView === 'week' || savedView === 'day' || savedView === 'list')) {
+        setViewMode(savedView);
+      } else if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        setViewMode('day');
+      }
+    } catch {}
+  }, [checkAuth, fetchInitialTimetable, baseMonday]);
+
+  const handlePrevWeek = () => {
+    const next = new Date(baseMonday);
+    next.setDate(baseMonday.getDate() - 7);
+    navigateToWeek(next, 'left');
+  };
+
+  const handleNextWeek = () => {
+    const next = new Date(baseMonday);
+    next.setDate(baseMonday.getDate() + 7);
+    navigateToWeek(next, 'right');
+  };
+
+  const handleToday = () => {
+    navigateToWeek(getMonday(new Date()), 'fade');
+  };
+
+  const handleCategoryChange = (cat: string) => {
+    setSlideDirection('fade');
+    setTransitionKey((prev) => prev + 1);
+    setSelectedCategory(cat);
+  };
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setSlideDirection('fade');
+    setTransitionKey((prev) => prev + 1);
+    setViewMode(mode);
+    try {
+      localStorage.setItem('usos_preferred_view', mode);
+    } catch {}
+  };
+
+  const filteredActivities = useMemo(() => {
+    return activities.filter((act) => {
+      if (selectedCategory !== 'all') {
+        const cat = act.category || '';
+        const classtypeStr = (
+          typeof act.classtype_name === 'object'
+            ? act.classtype_name?.pl || ''
+            : act.classtype_name || ''
+        ).toLowerCase();
+
+        if (cat !== selectedCategory && !classtypeStr.includes(selectedCategory)) {
+          return false;
+        }
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const name = (typeof act.name === 'object' ? act.name?.pl || '' : act.name || '').toLowerCase();
+        const courseId = (act.course_id || '').toLowerCase();
+        const room = (act.room_number || '').toLowerCase();
+        const lecturers = (act.lecturer_names || []).join(' ').toLowerCase();
+        const note = (act.note || '').toLowerCase();
+
+        if (
+          !name.includes(q) &&
+          !courseId.includes(q) &&
+          !room.includes(q) &&
+          !lecturers.includes(q) &&
+          !note.includes(q)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [activities, selectedCategory, searchQuery]);
+
+  const handleExportICal = () => {
+    if (!activities || activities.length === 0) return;
+    const icsContent = generateICalendar(activities, 'Plan Lekcji Politechnika Rzeszowska USOS');
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Plan_PRZ_USOS_${baseMonday.toISOString().split('T')[0]}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setIsLive(false);
+    setUser(null);
+    checkAuth();
+    fetchInitialTimetable(baseMonday);
+  };
+
+  return {
+    baseMonday,
+    activities,
+    filteredActivities,
+    initialLoading,
+    isNavigatingWeek,
+    error,
+    authBanner,
+    setAuthBanner,
+    isLive,
+    isOfflineLoaded,
+    lastSyncTime,
+    user,
+    viewMode,
+    selectedCategory,
+    searchQuery,
+    setSearchQuery,
+    showWeekend,
+    setShowWeekend,
+    slideDirection,
+    transitionKey,
+    selectedActivity,
+    setSelectedActivity,
+    isSettingsOpen,
+    setIsSettingsOpen,
+    isSearchOpen,
+    setIsSearchOpen,
+    checkAuth,
+    fetchInitialTimetable,
+    handlePrevWeek,
+    handleNextWeek,
+    handleToday,
+    handleCategoryChange,
+    handleViewModeChange,
+    handleExportICal,
+    handleLogout,
+  };
+}

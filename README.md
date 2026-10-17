@@ -1,0 +1,75 @@
+# 🎓 Plan Zajęć USOS • Politechnika Rzeszowska
+
+Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji planu zajęć, zintegrowana z oficjalnym **USOS API Politechniki Rzeszowskiej** ([usosapps.prz.edu.pl](https://usosapps.prz.edu.pl/developers/api/)).
+
+---
+
+## 🌟 Funkcje Aplikacji
+
+1. **Widoki Planu Zajęć:**
+   - **Siatka Tygodniowa (Week Grid):** Przejrzysty układ godzinowy od 08:00 do 20:00 z podziałem na dni tygodnia (Pon–Pt z opcją włączenia Sobota/Niedziela dla studiów niestacjonarnych).
+   - **Wskaźnik Czasu na Żywo ("Teraz"):** Czerwona linia ze znacznikiem aktualnej godziny na bieżącym dniu.
+   - **Agenda Dzienna (Day View):** Idealny widok dla urządzeń mobilnych z kafelkami dni i chronologiczną osią czasu.
+   - **Wykaz Tabelaryczny (List View):** Zestawienie z możliwością bezpośredniego wydruku (`Drukuj plan`).
+
+2. **Baner „Najbliższe Zajęcia”:**
+   - Wyświetla aktualnie trwające lub najbliższe nadchodzące zajęcia z odliczaniem czasu (np. *za 28 minut w sali V-104*).
+
+3. **Integracja z USOS API (Politechnika Rzeszowska):**
+   - **Pełny protokół OAuth 1.0a:** Bezpieczna autoryzacja z serwerem `https://usosapps.prz.edu.pl/`.
+   - **Wyszukiwarka Przedmiotów Na Żywo:** Przeszukiwanie bazy przedmiotów PRZ w czasie rzeczywistym przez endpoint `services/courses/search`.
+   - **Tryb Demonstracyjny (Out-of-the-box):** Realistyczny plan zajęć studenta Informatyki WEiI PRZ (z salami w Budynku V, B, A, L oraz prowadzącymi), działający natychmiast bez konieczności rejestracji kluczy.
+
+4. **Karta Szczegółów Zajęć:**
+   - Pełna nazwa (PL/EN), typ zajęć (Wykład, Laboratorium, Ćwiczenia, Projekt, Seminarium, Lektorat).
+   - Budynek i sala na kampusie Politechniki Rzeszowskiej.
+   - Prowadzący zajęcia.
+   - **Prywatne notatki studenta:** Zapisywane lokalnie w przeglądarce (np. terminy kolokwiów, oddania projektów).
+   - Bezpośredni link do przedmiotu w USOSweb PRZ.
+
+5. **Eksport do Kalendarza:**
+   - Pobieranie pełnego planu lub pojedynczych zajęć do pliku `.ics` (iCalendar), zgodnego z **Google Calendar**, **Apple Calendar** oraz **Microsoft Outlook**.
+
+6. **Design i Aestetyka:**
+   - Oficjalna paleta barw PRZ (granat `#003B71`, cyjan, biel i szarości).
+   - Pełne wsparcie dla **Trybu Ciemnego (Dark Mode)**.
+   - Płynne animacje i szklany efekt (glassmorphism).
+
+---
+
+## 🚀 Uruchomienie Lokalne
+
+Aplikacja jest uruchomiona pod adresem:
+👉 **`http://localhost:3001/`**
+
+Aby uruchomić aplikację w dowolnym momencie:
+```bash
+cd usos
+npm run dev -- -p 3001
+```
+
+Budowanie wersji produkcyjnej:
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 🔑 Konfiguracja Własnych Kluczy USOS API (Opcjonalnie)
+
+Aby pobierać swój własny plan zajęć bezpośrednio ze swojego konta studenta:
+
+1. Wejdź na [https://usosapps.prz.edu.pl/developers/](https://usosapps.prz.edu.pl/developers/).
+2. Zaloguj się kontem PRZ i kliknij **Zarejestruj nową aplikację**.
+3. Jako adres zwrotny (Callback URL) podaj:  
+   `http://localhost:3001/api/auth/callback`
+4. Skopiuj wygenerowany **Consumer Key** oraz **Consumer Secret**.
+5. W aplikacji kliknij przycisk **Połącz z USOS** w prawym górnym rogu i wklej klucze lub utwórz plik `.env.local`:
+
+```env
+USOS_BASE_URL=https://usosapps.prz.edu.pl/
+USOS_CONSUMER_KEY=twój_consumer_key
+USOS_CONSUMER_SECRET=twój_consumer_secret
+USOS_SCOPES=studies
+```
