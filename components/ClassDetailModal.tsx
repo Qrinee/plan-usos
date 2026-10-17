@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   Clock,
@@ -23,10 +23,71 @@ interface ClassDetailModalProps {
 }
 
 export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
-  activity,
+  activity: externalActivity,
   onClose,
 }) => {
-  if (!activity) return null;
+  const [renderedActivity, setRenderedActivity] = useState<USOSActivity | null>(externalActivity);
+  const [isClosing, setIsClosing] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const touchStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (externalActivity) {
+      setRenderedActivity(externalActivity);
+      setIsClosing(false);
+      setDragY(0);
+    } else {
+      setRenderedActivity(null);
+      setIsClosing(false);
+      setDragY(0);
+    }
+  }, [externalActivity]);
+
+  const handleClose = useCallback(() => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 230);
+  }, [isClosing, onClose]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleClose]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return;
+    const currentY = e.touches[0].clientY;
+    const deltaY = currentY - touchStartY.current;
+    if (deltaY > 0) {
+      setDragY(deltaY);
+    } else {
+      setDragY(deltaY * 0.15);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchStartY.current === null) return;
+    touchStartY.current = null;
+    setIsDragging(false);
+    if (dragY > 60) {
+      handleClose();
+    } else {
+      setDragY(0);
+    }
+  };
 
   const [isAppleDevice, setIsAppleDevice] = useState(false);
 
@@ -38,6 +99,9 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
       setIsAppleDevice(isApple);
     }
   }, []);
+
+  if (!renderedActivity) return null;
+  const activity = renderedActivity;
 
   const start = parseDate(activity.start_time);
   const end = parseDate(activity.end_time);
@@ -68,25 +132,23 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
 
   const baseColor = activity.color || '#fa243c';
 
-  const mapSearchQuery = useMemo(() => {
-    let specificBuilding = '';
-    if (building && building !== 'Politechnika Rzeszowska') {
-      specificBuilding = building;
-    } else if (room) {
-      const match = room.match(/^([A-Za-z]+)[-\s]/);
-      if (match) {
-        specificBuilding = `Budynek ${match[1].toUpperCase()}`;
-      }
+  let specificBuilding = '';
+  if (building && building !== 'Politechnika Rzeszowska') {
+    specificBuilding = building;
+  } else if (room) {
+    const match = room.match(/^([A-Za-z]+)[-\s]/);
+    if (match) {
+      specificBuilding = `Budynek ${match[1].toUpperCase()}`;
     }
+  }
 
-    const parts: string[] = [];
-    if (specificBuilding) {
-      parts.push(specificBuilding);
-    }
-    parts.push('Politechnika Rzeszowska');
-    parts.push('Rzeszów');
-    return parts.join(', ');
-  }, [building, room]);
+  const mapParts: string[] = [];
+  if (specificBuilding) {
+    mapParts.push(specificBuilding);
+  }
+  mapParts.push('Politechnika Rzeszowska');
+  mapParts.push('Rzeszów');
+  const mapSearchQuery = mapParts.join(', ');
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapSearchQuery)}`;
   const appleMapsUrl = `https://maps.apple.com/?q=${encodeURIComponent(mapSearchQuery)}`;
@@ -115,20 +177,38 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/45 backdrop-blur-xl animate-in fade-in duration-300"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-md ${
+        isClosing ? 'anim-backdrop-fade-out' : 'anim-backdrop-fade'
+      }`}
+      onClick={handleClose}
     >
       <div
-        className="w-full max-w-lg apple-card rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in slide-in-from-bottom-5 sm:slide-in-from-bottom-2 duration-300"
+        className={`w-full max-w-lg apple-card rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] ${
+          isClosing ? 'anim-sheet-slide-down' : 'anim-sheet-slide-up'
+        }`}
+        style={
+          isDragging
+            ? { transform: `translate3d(0, ${Math.max(0, dragY)}px, 0)`, transition: 'none' }
+            : dragY > 0 && isClosing
+            ? { transform: 'translate3d(0, 100%, 0)', transition: 'transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)' }
+            : dragY > 0 && !isClosing
+            ? { transform: 'translate3d(0, 0, 0)', transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }
+            : undefined
+        }
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sm:hidden pt-2.5 pb-0.5 flex justify-center">
-          <div className="w-10 h-1 rounded-full bg-black/20 dark:bg-white/20" />
+        <div
+          className="sm:hidden pt-3 pb-1 flex justify-center cursor-grab active:cursor-grabbing touch-none select-none"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <div className="w-10 h-1.5 rounded-full bg-black/20 dark:bg-white/20" />
         </div>
 
         <div className="p-5 sm:p-6 relative border-b border-black/[0.04] dark:border-white/[0.06]">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute right-4 top-4 sm:right-5 sm:top-5 w-8 h-8 rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-[#86868b] hover:text-[#1d1d1f] dark:hover:text-[#f5f5f7] flex items-center justify-center transition-all cursor-pointer"
             aria-label="Zamknij"
           >
@@ -252,12 +332,11 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
         </div>
 
         <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-2.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
-          <button
+          <div
             onClick={handleDownloadSingleICal}
-            className="flex items-center space-x-1.5 px-3.5 py-2 min-h-[40px] rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-xs font-medium text-[#1d1d1f] dark:text-[#f5f5f7] active:scale-95 transition-all cursor-pointer"
+            className="flex items-center space-x-1.5 px-3.5 py-2 min-h-[40px] rounded-full hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-xs font-medium text-[#1d1d1f] dark:text-[#f5f5f7] active:scale-95 transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-[#86868b]" />
-          </button>
+          </div>
 
           <a
             href={usoswebUrl}

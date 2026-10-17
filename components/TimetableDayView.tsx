@@ -2,20 +2,13 @@
 
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
 import {
-  Clock,
   MapPin,
   User,
-  FileText,
   CheckCircle,
   Coffee,
-  Building2,
-  Navigation,
   ChevronRight,
   ChevronLeft,
   Calendar,
-  AlertTriangle,
-  Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 import { USOSActivity } from '@/lib/usos/types';
 import { parseDate, formatTime } from '@/lib/utils/date';
@@ -58,9 +51,9 @@ interface TimelineLayoutItem {
   totalCols: number;
 }
 
-const TIMELINE_START_HOUR = 7; // 07:00
-const TIMELINE_END_HOUR = 21;   // 21:00
-const HOUR_HEIGHT = 80;         // 80px per hour
+const TIMELINE_START_HOUR = 7;
+const TIMELINE_END_HOUR = 21;
+const HOUR_HEIGHT = 80;
 const TOTAL_TIMELINE_HEIGHT = (TIMELINE_END_HOUR - TIMELINE_START_HOUR) * HOUR_HEIGHT;
 
 function formatBreakDuration(minutes: number): { short: string; full: string } {

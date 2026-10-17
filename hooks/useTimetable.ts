@@ -125,8 +125,6 @@ export function useTimetable() {
       const acts = data.activities || [];
       weekCacheRef.current.set(startStr, acts);
 
-      // If today is Friday, Saturday, or Sunday, and all classes for this week are finished,
-      // advance to next week starting from Monday (as requested by user)
       const now = new Date();
       const day = now.getDay();
       if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
@@ -163,7 +161,6 @@ export function useTimetable() {
         console.warn('Could not cache timetable in localStorage:', storageErr);
       }
 
-      // Prefetch adjacent weeks in the background for instant navigation
       const prevM = new Date(monday);
       prevM.setDate(monday.getDate() - 7);
       const nextM = new Date(monday);
@@ -235,7 +232,6 @@ export function useTimetable() {
       setBaseMonday(targetMonday);
       setActivities(cached);
 
-      // Prefetch adjacent weeks for target
       const prevM = new Date(targetMonday);
       prevM.setDate(targetMonday.getDate() - 7);
       const nextM = new Date(targetMonday);

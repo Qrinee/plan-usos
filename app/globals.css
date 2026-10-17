@@ -59,6 +59,7 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -70,12 +71,15 @@ body {
 .pt-safe {
   padding-top: env(safe-area-inset-top, 0px);
 }
+
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
 .pl-safe {
   padding-left: env(safe-area-inset-left, 0px);
 }
+
 .pr-safe {
   padding-right: env(safe-area-inset-right, 0px);
 }
@@ -83,6 +87,101 @@ body {
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
+}
+
+
+@keyframes sheet-slide-up {
+  0% {
+    transform: translate3d(0, 100%, 0);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sheet-slide-down {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+
+  100% {
+    transform: translate3d(0, 100%, 0);
+  }
+}
+
+@keyframes modal-scale-up {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translate3d(0, 16px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+@keyframes modal-scale-down {
+  0% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.95) translate3d(0, 16px, 0);
+  }
+}
+
+@keyframes backdrop-fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes backdrop-fade-out {
+  0% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+.anim-backdrop-fade {
+  animation: backdrop-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-backdrop-fade-out {
+  animation: backdrop-fade-out 0.2s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.anim-sheet-slide-up {
+  animation: sheet-slide-up 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
+}
+
+.anim-sheet-slide-down {
+  animation: sheet-slide-down 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  will-change: transform;
+}
+
+@media (min-width: 640px) {
+  .anim-sheet-slide-up {
+    animation: modal-scale-up 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    will-change: transform, opacity;
+  }
+
+  .anim-sheet-slide-down {
+    animation: modal-scale-down 0.18s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+    will-change: transform, opacity;
+  }
 }
 
 ::-webkit-scrollbar-track {
@@ -186,9 +285,17 @@ body {
 }
 
 @keyframes aura-float {
-  0% { transform: translate(0px, 0px) scale(1); }
-  50% { transform: translate(30px, 40px) scale(1.08); }
-  100% { transform: translate(-20px, 20px) scale(0.95); }
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+
+  50% {
+    transform: translate(30px, 40px) scale(1.08);
+  }
+
+  100% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
 }
 
 @keyframes slide-in-right {
@@ -196,6 +303,7 @@ body {
     opacity: 0.6;
     transform: translate3d(22px, 0, 0);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -207,6 +315,7 @@ body {
     opacity: 0.6;
     transform: translate3d(-22px, 0, 0);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -218,6 +327,7 @@ body {
     opacity: 0.65;
     transform: scale(0.992) translate3d(0, 4px, 0);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
@@ -228,9 +338,11 @@ body {
   0% {
     transform: scale(0.95);
   }
+
   60% {
     transform: scale(1.02);
   }
+
   100% {
     transform: scale(1);
   }
@@ -260,6 +372,7 @@ body {
     opacity: 0;
     transform: translate3d(0, 8px, 0);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0);
@@ -271,6 +384,7 @@ body {
     opacity: 0;
     transform: scale(0.97) translate3d(0, 6px, 0);
   }
+
   100% {
     opacity: 1;
     transform: scale(1) translate3d(0, 0, 0);
@@ -302,9 +416,11 @@ body {
     background: white !important;
     color: black !important;
   }
+
   .no-print {
     display: none !important;
   }
+
   .print-only {
     display: block !important;
   }
