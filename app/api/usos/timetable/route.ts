@@ -1,8 +1,141 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { USOSOAuthClient } from '@/lib/usos/oauth';
-import { ClassType, USOSActivity } from '@/lib/usos/types';
+import { ClassType, USOSActivity, USOSLecturer } from '@/lib/usos/types';
 
 export const dynamic = 'force-dynamic';
+
+interface USOSLecturerInfo {
+  id: number | string;
+  first_name: string;
+  last_name: string;
+  titles?: {
+    before?: string | null;
+    after?: string | null;
+  };
+  email?: string;
+  formatted_name: string;
+}
+
+// In-memory cache for resolved lecturers across timetable requests
+const lecturerCache = new Map<string, USOSLecturerInfo>();
+
+function formatLecturerNameWithTitle(user: {
+  first_name?: string;
+  last_name?: string;
+  titles?: {
+    before?: string | null;
+    after?: string | null;
+  };
+}): string {
+  const titleBefore = user.titles?.before ? user.titles.before.trim() : '';
+  const titleAfter = user.titles?.after ? user.titles.after.trim() : '';
+  const firstName = user.first_name ? user.first_name.trim() : '';
+  const lastName = user.last_name ? user.last_name.trim() : '';
+
+  const nameParts: string[] = [];
+  if (titleBefore) nameParts.push(titleBefore);
+  if (firstName) nameParts.push(firstName);
+  if (lastName) nameParts.push(lastName);
+
+  let formatted = nameParts.filter(Boolean).join(' ');
+  if (titleAfter) {
+    formatted = `${formatted}, ${titleAfter}`;
+  }
+  return formatted || `${firstName} ${lastName}`.trim();
+}
+
+async function resolveLecturers(
+  client: USOSOAuthClient,
+  consumerKey: string,
+  consumerSecret: string,
+  accessToken: string | undefined,
+  accessTokenSecret: string | undefined,
+  lecturerIds: (number | string)[]
+): Promise<Map<string, USOSLecturerInfo>> {
+  const result = new Map<string, USOSLecturerInfo>();
+  const missingIds: string[] = [];
+
+  for (const rawId of lecturerIds) {
+    const idStr = String(rawId);
+    if (!idStr || idStr === 'undefined' || idStr === 'null') continue;
+    if (lecturerCache.has(idStr)) {
+      result.set(idStr, lecturerCache.get(idStr)!);
+    } else {
+      missingIds.push(idStr);
+    }
+  }
+
+  if (missingIds.length === 0) {
+    return result;
+  }
+
+  const uniqueMissing = Array.from(new Set(missingIds));
+  const chunkSize = 25;
+
+  for (let i = 0; i < uniqueMissing.length; i += chunkSize) {
+    const chunk = uniqueMissing.slice(i, i + chunkSize);
+    try {
+      let userRes = await client.signedRequest({
+        url: 'services/users/users',
+        consumerKey,
+        consumerSecret,
+        token: accessToken,
+        tokenSecret: accessTokenSecret,
+        params: {
+          user_ids: chunk.join('|'),
+          fields: 'id|first_name|last_name|titles',
+        },
+      });
+
+      if (!userRes || !userRes.ok) {
+        console.warn('users/users with titles failed, status:', userRes?.status);
+        userRes = await client.signedRequest({
+          url: 'services/users/users',
+          consumerKey,
+          consumerSecret,
+          token: accessToken,
+          tokenSecret: accessTokenSecret,
+          params: {
+            user_ids: chunk.join('|'),
+            fields: 'id|first_name|last_name',
+          },
+        });
+      }
+
+      if (userRes && userRes.ok) {
+        const parsed = await userRes.json();
+        console.log('users/users resolved batch count:', parsed && typeof parsed === 'object' ? Object.keys(parsed).length : 0);
+        if (parsed && typeof parsed === 'object') {
+          const entries = Array.isArray(parsed)
+            ? parsed.map((u: any) => [String(u.id), u])
+            : Object.entries(parsed);
+
+          for (const [id, u] of entries) {
+            if (u && typeof u === 'object') {
+              const formatted = formatLecturerNameWithTitle(u as any);
+              const info: USOSLecturerInfo = {
+                id: (u as any).id || id,
+                first_name: (u as any).first_name || '',
+                last_name: (u as any).last_name || '',
+                titles: (u as any).titles,
+                email: (u as any).email,
+                formatted_name: formatted,
+              };
+              lecturerCache.set(String(id), info);
+              result.set(String(id), info);
+            }
+          }
+        }
+      } else {
+        console.warn('users/users failed completely for chunk:', chunk);
+      }
+    } catch (e) {
+      console.warn('Failed to resolve lecturers batch:', e);
+    }
+  }
+
+  return result;
+}
 
 function assignCategoryAndColor(item: any): { category: ClassType; color: string } {
   const typeStr = (
@@ -44,8 +177,46 @@ function normalizeDateStr(d: string): string {
   return d.includes('T') ? d : d.replace(' ', 'T');
 }
 
-function mapRawActivity(act: any, index: number): USOSActivity {
+function mapRawActivity(act: any, index: number, lecturerMap?: Map<string, USOSLecturerInfo>): USOSActivity {
   const { category, color } = assignCategoryAndColor(act);
+
+  const activityLecturers: USOSLecturer[] = [];
+  const activityLecturerNames: string[] = [];
+
+  const candidateIds = [
+    ...(Array.isArray(act.lecturer_ids) ? act.lecturer_ids : []),
+    ...(Array.isArray(act.lecturers) ? act.lecturers.map((l: any) => l?.id) : []),
+  ].filter(Boolean);
+
+  const seenLecIds = new Set<string>();
+  for (const cid of candidateIds) {
+    const idStr = String(cid);
+    if (!seenLecIds.has(idStr)) {
+      seenLecIds.add(idStr);
+      const resolved = lecturerMap?.get(idStr);
+      if (resolved) {
+        activityLecturers.push(resolved);
+        activityLecturerNames.push(resolved.formatted_name);
+      }
+    }
+  }
+
+  // Fallback to basic act.lecturers if lecturerMap didn't have titles
+  if (activityLecturerNames.length === 0 && Array.isArray(act.lecturers) && act.lecturers.length > 0) {
+    for (const l of act.lecturers) {
+      const basicName = `${l.first_name || ''} ${l.last_name || ''}`.trim();
+      if (basicName) {
+        activityLecturerNames.push(basicName);
+        activityLecturers.push({
+          id: l.id || '',
+          first_name: l.first_name || '',
+          last_name: l.last_name || '',
+          formatted_name: basicName,
+        });
+      }
+    }
+  }
+
   return {
     id: act.id || `live-act-${index}-${act.course_id || 'course'}`,
     type: act.type || 'classgroup',
@@ -58,9 +229,8 @@ function mapRawActivity(act: any, index: number): USOSActivity {
     room_number: act.room_number,
     building_name: act.building_name,
     lecturer_ids: act.lecturer_ids,
-    lecturer_names: act.lecturers
-      ? act.lecturers.map((l: any) => `${l.first_name || ''} ${l.last_name || ''}`.trim())
-      : undefined,
+    lecturer_names: activityLecturerNames.length > 0 ? activityLecturerNames : undefined,
+    lecturers: activityLecturers.length > 0 ? activityLecturers : undefined,
     group_number: act.group_number,
     category,
     color,
@@ -89,12 +259,13 @@ export async function GET(req: NextRequest) {
       const consumerKey = session.consumerKey || process.env.USOS_CONSUMER_KEY;
       const consumerSecret = session.consumerSecret || process.env.USOS_CONSUMER_SECRET;
 
-      const validFields = 'start_time|end_time|name|course_name|course_id|classtype_name|room_number|building_name|lecturers|lecturer_ids|group_number';
+      const standardFields = 'type|start_time|end_time|name|course_id|classtype_name|room_number|building_name|lecturer_ids|group_number';
+      const fallbackFields = 'start_time|end_time|name|room_number|lecturer_ids';
 
-      const fetchEndpoint = async (endpoint: string, withFields: boolean) => {
+      const fetchEndpoint = async (endpoint: string, fieldsToUse?: string) => {
         try {
           const params: Record<string, string | number> = { start, days };
-          if (withFields) params.fields = validFields;
+          if (fieldsToUse) params.fields = fieldsToUse;
           return await client.signedRequest({
             url: endpoint,
             consumerKey,
@@ -114,17 +285,32 @@ export async function GET(req: NextRequest) {
       let is401 = false;
       let lastError = '';
 
-      let res = await fetchEndpoint('services/tt/student', true);
+      let res = await fetchEndpoint('services/tt/student', standardFields);
+      console.log('services/tt/student standardFields status:', res?.status);
       if (!res || !res.ok) {
         if (res?.status === 401) is401 = true;
-        // Retry without fields in case a field name is not supported
-        res = await fetchEndpoint('services/tt/student', false);
+        const errText = res ? await res.clone().text().catch(() => '') : '';
+        console.warn('services/tt/student standardFields failed:', res?.status, errText);
+
+        res = await fetchEndpoint('services/tt/student', fallbackFields);
+        console.log('services/tt/student fallbackFields status:', res?.status);
+        if (!res || !res.ok) {
+          if (res?.status === 401) is401 = true;
+          res = await fetchEndpoint('services/tt/student');
+          console.log('services/tt/student without fields status:', res?.status);
+        }
       }
 
       if (res && res.ok) {
         try {
           const parsed = await res.json();
-          if (Array.isArray(parsed)) studentActs = parsed;
+          if (Array.isArray(parsed)) {
+            studentActs = parsed;
+            console.log('studentActs count:', studentActs.length);
+            if (studentActs.length > 0) {
+              console.log('Sample raw studentAct:', JSON.stringify(studentActs[0]));
+            }
+          }
         } catch {}
       } else if (res) {
         if (res.status === 401) is401 = true;
@@ -134,15 +320,25 @@ export async function GET(req: NextRequest) {
       // 2. Also try services/tt/user (especially helpful for future weeks, seminars, consultations, or if studentActs is empty)
       let userActs: any[] = [];
       if (!is401) {
-        let userRes = await fetchEndpoint('services/tt/user', true);
+        let userRes = await fetchEndpoint('services/tt/user', standardFields);
+        console.log('services/tt/user standardFields status:', userRes?.status);
         if (!userRes || !userRes.ok) {
           if (userRes?.status === 401) is401 = true;
-          userRes = await fetchEndpoint('services/tt/user', false);
+          userRes = await fetchEndpoint('services/tt/user', fallbackFields);
+          console.log('services/tt/user fallbackFields status:', userRes?.status);
+          if (!userRes || !userRes.ok) {
+            if (userRes?.status === 401) is401 = true;
+            userRes = await fetchEndpoint('services/tt/user');
+            console.log('services/tt/user without fields status:', userRes?.status);
+          }
         }
         if (userRes && userRes.ok) {
           try {
             const parsed = await userRes.json();
-            if (Array.isArray(parsed)) userActs = parsed;
+            if (Array.isArray(parsed)) {
+              userActs = parsed;
+              console.log('userActs count:', userActs.length);
+            }
           } catch {}
         }
       }
@@ -174,7 +370,39 @@ export async function GET(req: NextRequest) {
       }
 
       if (rawCombined.length > 0 || (res && res.ok)) {
-        const formatted: USOSActivity[] = rawCombined.map(mapRawActivity);
+        // Collect all lecturer IDs
+        const allLecturerIds: (string | number)[] = [];
+        for (const act of rawCombined) {
+          if (Array.isArray(act.lecturer_ids)) {
+            allLecturerIds.push(...act.lecturer_ids);
+          }
+          if (Array.isArray(act.lecturers)) {
+            for (const lec of act.lecturers) {
+              if (lec && (lec.id || lec.user_id)) {
+                allLecturerIds.push(lec.id || lec.user_id);
+              }
+            }
+          }
+        }
+
+        console.log('Total unique lecturer IDs to resolve:', Array.from(new Set(allLecturerIds)));
+
+        const lecturerMap = await resolveLecturers(
+          client,
+          consumerKey,
+          consumerSecret,
+          session.accessToken,
+          session.accessTokenSecret,
+          allLecturerIds
+        );
+
+        console.log('Resolved lecturers map size:', lecturerMap.size);
+
+        const formatted: USOSActivity[] = rawCombined.map((act, idx) => mapRawActivity(act, idx, lecturerMap));
+        if (formatted.length > 0) {
+          console.log('Sample formatted activity lecturers:', formatted[0]?.lecturer_names);
+        }
+
         return NextResponse.json({
           activities: formatted,
           isLive: true,

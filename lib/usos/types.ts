@@ -12,6 +12,18 @@ export interface LangText {
   en?: string;
 }
 
+export interface USOSLecturer {
+  id?: number | string;
+  first_name?: string;
+  last_name?: string;
+  titles?: {
+    before?: string | null;
+    after?: string | null;
+  };
+  email?: string;
+  formatted_name?: string;
+}
+
 export interface USOSActivity {
   id: string;
   type: string;
@@ -28,6 +40,7 @@ export interface USOSActivity {
   building_id?: string;
   lecturer_ids?: number[];
   lecturer_names?: string[];
+  lecturers?: USOSLecturer[];
   group_number?: number | string;
   unit_id?: number | string;
   note?: string;

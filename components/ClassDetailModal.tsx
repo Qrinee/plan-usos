@@ -11,6 +11,9 @@ import {
   Download,
   Navigation,
   Compass,
+  GraduationCap,
+  Mail,
+  User,
 } from 'lucide-react';
 import { USOSActivity } from '@/lib/usos/types';
 import { generateICalendar } from '@/lib/usos/ical';
@@ -169,30 +172,28 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
   const usoswebUrl =
     activity.url ||
     (activity.course_id
-      ? `https://usos.prz.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&kod=${encodeURIComponent(
+      ? `https://usosweb.prz.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&prz_kod=${encodeURIComponent(
         activity.course_id
       )}`
-      : 'https://usos.prz.edu.pl/');
+      : 'https://usosweb.prz.edu.pl/');
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-md ${
-        isClosing ? 'anim-backdrop-fade-out' : 'anim-backdrop-fade'
-      }`}
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-md ${isClosing ? 'anim-backdrop-fade-out' : 'anim-backdrop-fade'
+        }`}
       onClick={handleClose}
     >
       <div
-        className={`w-full max-w-lg apple-card rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] ${
-          isClosing ? 'anim-sheet-slide-down' : 'anim-sheet-slide-up'
-        }`}
+        className={`w-full max-w-lg apple-card rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] ${isClosing ? 'anim-sheet-slide-down' : 'anim-sheet-slide-up'
+          }`}
         style={
           isDragging
             ? { transform: `translate3d(0, ${Math.max(0, dragY)}px, 0)`, transition: 'none' }
             : dragY > 0 && isClosing
-            ? { transform: 'translate3d(0, 100%, 0)', transition: 'transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)' }
-            : dragY > 0 && !isClosing
-            ? { transform: 'translate3d(0, 0, 0)', transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }
-            : undefined
+              ? { transform: 'translate3d(0, 100%, 0)', transition: 'transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)' }
+              : dragY > 0 && !isClosing
+                ? { transform: 'translate3d(0, 0, 0)', transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1)' }
+                : undefined
         }
         onClick={(e) => e.stopPropagation()}
       >
@@ -312,6 +313,70 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
               </button>
             </div>
           </div>
+
+          {((activity.lecturers && activity.lecturers.length > 0) || (activity.lecturer_names && activity.lecturer_names.length > 0)) && (
+            <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.03] dark:border-white/[0.04] space-y-3">
+
+
+              <div className="space-y-2 pt-1">
+                {activity.lecturers && activity.lecturers.length > 0 ? (
+                  activity.lecturers.map((lec, idx) => {
+                    const profileUrl = lec.id ? `https://usos.prz.edu.pl/kontroler.php?_action=katalog2/osoby/pokazOsobe&os_id=${encodeURIComponent(String(lec.id))}` : null;
+                    const displayName = lec.formatted_name || `${lec.first_name || ''} ${lec.last_name || ''}`.trim() || 'Wykładowca';
+
+                    return (
+                      <div
+                        key={lec.id || idx}
+                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.02] dark:border-white/[0.03]"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-[#8b5cf6]/10 text-[#8b5cf6] flex items-center justify-center shrink-0">
+                          <GraduationCap className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-xs text-[#1d1d1f] dark:text-[#f5f5f7] truncate">
+                            {displayName}
+                          </p>
+                          {lec.email && (
+                            <a
+                              href={`mailto:${lec.email}`}
+                              className="text-[11px] text-[#0071e3] dark:text-[#2997ff] hover:underline flex items-center gap-1 mt-1 truncate"
+                            >
+                              <Mail className="w-3 h-3 opacity-70 shrink-0" />
+                              <span className="truncate">{lec.email}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        {profileUrl && (
+                          <a
+                            href={profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Otwórz profil w USOSweb"
+                            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#fa243c]/15 hover:text-[#fa243c] text-[#86868b] text-[11px] font-medium transition-all shrink-0 active:scale-95"
+                          >
+                            <span>USOS</span>
+                            <ExternalLink className="w-3 h-3 opacity-70" />
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  activity.lecturer_names?.map((lecName, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.02] dark:border-white/[0.03]"
+                    >
+                      <span className="font-semibold text-xs text-[#1d1d1f] dark:text-[#f5f5f7]">
+                        {lecName}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
           {activity.course_id && (
             <div className="flex items-start space-x-3.5 p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.03] dark:border-white/[0.04]">

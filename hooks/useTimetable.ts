@@ -6,6 +6,8 @@ import { generateICalendar } from '@/lib/usos/ical';
 import { getMonday, getInitialMonday, parseDate } from '@/lib/utils/date';
 import { ViewMode } from '@/components/TimetableControls';
 
+const TIMETABLE_CACHE_PREFIX = 'usos_offline_timetable_v3_';
+
 function getIsMobileDevice(): boolean {
   if (typeof window === 'undefined') return false;
   const isMobileUA = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
@@ -43,6 +45,14 @@ export function useTimetable() {
 
   useEffect(() => {
     try {
+      // Clear legacy caches that did not include lecturer details
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('usos_offline_timetable_') && !key.startsWith(TIMETABLE_CACHE_PREFIX)) {
+          localStorage.removeItem(key);
+        }
+      }
+
       const savedSync = localStorage.getItem('usos_last_sync_time');
       if (savedSync) setLastSyncTime(savedSync);
 
@@ -90,12 +100,15 @@ export function useTimetable() {
 
     try {
       if (typeof window !== 'undefined') {
-        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
         if (cachedRaw) {
           try {
             const cachedActs = JSON.parse(cachedRaw);
-            weekCacheRef.current.set(startStr, cachedActs);
-            return;
+            const hasLecturers = cachedActs.some((a: any) => (a.lecturer_names && a.lecturer_names.length > 0) || (a.lecturers && a.lecturers.length > 0));
+            if (hasLecturers) {
+              weekCacheRef.current.set(startStr, cachedActs);
+              return;
+            }
           } catch { }
         }
       }
@@ -109,7 +122,7 @@ export function useTimetable() {
             weekCacheRef.current.set(startStr, acts);
             if (typeof window !== 'undefined') {
               try {
-                localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+                localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
               } catch { }
             }
           }
@@ -149,7 +162,7 @@ export function useTimetable() {
           if (startStr !== nextStartStr) {
             try {
               if (acts.length > 0) {
-                localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+                localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
               }
             } catch { }
             navigateToWeek(nextMonday, 'fade');
@@ -164,7 +177,7 @@ export function useTimetable() {
 
       try {
         if (acts.length > 0) {
-          localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+          localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
           const nowIso = new Date().toISOString();
           localStorage.setItem('usos_last_sync_time', nowIso);
           setLastSyncTime(nowIso);
@@ -183,7 +196,7 @@ export function useTimetable() {
       console.warn('Error fetching timetable, attempting offline cache:', err);
 
       try {
-        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
         if (cachedRaw) {
           const cachedActs = JSON.parse(cachedRaw);
           weekCacheRef.current.set(startStr, cachedActs);
@@ -212,7 +225,7 @@ export function useTimetable() {
         }
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
-          if (key && key.startsWith('usos_offline_timetable_')) {
+          if (key && key.startsWith(TIMETABLE_CACHE_PREFIX)) {
             const fallbackRaw = localStorage.getItem(key);
             if (fallbackRaw) {
               const fallbackActs = JSON.parse(fallbackRaw);
@@ -238,7 +251,8 @@ export function useTimetable() {
     const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
 
     const cached = weekCacheRef.current.get(startStr);
-    if (cached && cached.length > 0) {
+    const hasLecturers = cached && cached.some((a: any) => (a.lecturer_names && a.lecturer_names.length > 0) || (a.lecturers && a.lecturers.length > 0));
+    if (cached && cached.length > 0 && hasLecturers) {
       setSlideDirection(direction);
       setTransitionKey((prev) => prev + 1);
       setBaseMonday(targetMonday);
@@ -275,7 +289,7 @@ export function useTimetable() {
 
       try {
         if (newActs.length > 0) {
-          localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(newActs));
+          localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(newActs));
           const nowIso = new Date().toISOString();
           localStorage.setItem('usos_last_sync_time', nowIso);
           setLastSyncTime(nowIso);
@@ -291,7 +305,7 @@ export function useTimetable() {
     } catch (err: any) {
       console.warn('Failed to navigate week via network, checking offline storage:', err);
       try {
-        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
         if (cachedRaw) {
           const cachedActs = JSON.parse(cachedRaw);
           weekCacheRef.current.set(startStr, cachedActs);

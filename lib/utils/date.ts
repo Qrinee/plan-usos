@@ -34,7 +34,7 @@ export function getInitialMonday(): Date {
     if (typeof window !== 'undefined') {
       try {
         const startStr = `${currentMonday.getFullYear()}-${(currentMonday.getMonth() + 1).toString().padStart(2, '0')}-${currentMonday.getDate().toString().padStart(2, '0')}`;
-        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        const cachedRaw = localStorage.getItem(`usos_offline_timetable_v3_${startStr}`) || localStorage.getItem(`usos_offline_timetable_${startStr}`);
         if (cachedRaw) {
           const acts = JSON.parse(cachedRaw);
           if (Array.isArray(acts) && acts.length > 0) {

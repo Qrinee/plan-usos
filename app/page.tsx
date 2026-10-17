@@ -65,7 +65,7 @@ export default function TimetablePage() {
 
   return (
     <div
-      className={`min-h-screen pt-10 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
+      className={`min-h-screen pt-4 sm:pt-6 md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
         customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
       }`}
     >
@@ -95,6 +95,18 @@ export default function TimetablePage() {
           <div className="apple-music-aura-2" />
         </div>
       )}
+
+      {/* Top Navbar for Desktop (Computer) */}
+      <div className="hidden md:block w-full sticky top-0 z-40">
+        <Navbar
+          isLive={isLive}
+          user={user}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+          darkMode={darkMode}
+          setDarkMode={toggleDarkMode}
+        />
+      </div>
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 space-y-3 sm:space-y-4">
@@ -198,6 +210,10 @@ export default function TimetablePage() {
                             baseMonday={baseMonday}
                             showWeekend={showWeekend}
                             onSelectActivity={setSelectedActivity}
+                            onPrevWeek={handlePrevWeek}
+                            onNextWeek={handleNextWeek}
+                            onToday={handleToday}
+                            isNavigatingWeek={isNavigatingWeek}
                           />
                         )}
 
@@ -222,17 +238,23 @@ export default function TimetablePage() {
         viewMode={viewMode}
         setViewMode={handleViewModeChange}
         isNavigatingWeek={isNavigatingWeek}
+        baseMonday={baseMonday}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onToday={handleToday}
       />
 
-      {/* Sticky Bottom Navigation Bar */}
-      <Navbar
-        isLive={isLive}
-        user={user}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
-        darkMode={darkMode}
-        setDarkMode={toggleDarkMode}
-      />
+      {/* Bottom Navigation Bar for Mobile (Phone) */}
+      <div className="block md:hidden w-full">
+        <Navbar
+          isLive={isLive}
+          user={user}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
+          darkMode={darkMode}
+          setDarkMode={toggleDarkMode}
+        />
+      </div>
 
       {/* Footer */}
       <Footer />

@@ -162,7 +162,7 @@ export const CourseSearchModal: React.FC<CourseSearchModalProps> = ({
                   </div>
 
                   <a
-                    href={`https://usosweb.prz.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&kod=${encodeURIComponent(
+                    href={`https://usosweb.prz.edu.pl/kontroler.php?_action=katalog2/przedmioty/pokazPrzedmiot&prz_kod=${encodeURIComponent(
                       item.course_id
                     )}`}
                     target="_blank"

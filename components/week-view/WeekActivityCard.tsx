@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock, MapPin, User } from 'lucide-react';
 import { USOSActivity } from '@/lib/usos/types';
 import { parseDate } from '@/lib/utils/date';
 import { WEEK_HOUR_HEIGHT } from './types';
@@ -112,6 +112,13 @@ export const WeekActivityCard: React.FC<WeekActivityCardProps> = ({
         >
           {name}
         </h4>
+
+        {activity.lecturer_names?.[0] && height >= 80 && (
+          <p className="text-[10px] text-[#86868b] truncate mt-1 flex items-center">
+            <User className="w-2.5 h-2.5 mr-1 shrink-0 opacity-70" />
+            <span className="truncate">{activity.lecturer_names[0]}</span>
+          </p>
+        )}
       </div>
 
       {height >= 65 && (

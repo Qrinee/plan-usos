@@ -125,7 +125,7 @@ export const DayActivityCard: React.FC<DayActivityCardProps> = ({
           </span>
         )}
 
-        {lecturers && item.heightPx >= 75 && (
+        {lecturers && item.heightPx >= 55 && (
           <span className="flex items-center space-x-1 truncate max-w-full">
             <User className="w-3 h-3 text-[#86868b] shrink-0" />
             <span className="truncate">{lecturers}</span>
