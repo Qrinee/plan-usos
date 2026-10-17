@@ -56,20 +56,3 @@ npm run start
 
 ---
 
-## 🔑 Konfiguracja Własnych Kluczy USOS API (Opcjonalnie)
-
-Aby pobierać swój własny plan zajęć bezpośrednio ze swojego konta studenta:
-
-1. Wejdź na [https://usosapps.prz.edu.pl/developers/](https://usosapps.prz.edu.pl/developers/).
-2. Zaloguj się kontem PRZ i kliknij **Zarejestruj nową aplikację**.
-3. Jako adres zwrotny (Callback URL) podaj:  
-   `http://localhost:3001/api/auth/callback`
-4. Skopiuj wygenerowany **Consumer Key** oraz **Consumer Secret**.
-5. W aplikacji kliknij przycisk **Połącz z USOS** w prawym górnym rogu i wklej klucze lub utwórz plik `.env.local`:
-
-```env
-USOS_BASE_URL=https://usosapps.prz.edu.pl/
-USOS_CONSUMER_KEY=twój_consumer_key
-USOS_CONSUMER_SECRET=twój_consumer_secret
-USOS_SCOPES=studies
-```
