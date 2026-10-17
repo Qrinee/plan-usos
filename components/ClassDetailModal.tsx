@@ -19,7 +19,6 @@ import { parseDate } from '@/lib/utils/date';
 interface ClassDetailModalProps {
   activity: USOSActivity | null;
   onClose: () => void;
-  onUpdateNote?: (actId: string, note: string) => void;
 }
 
 export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
@@ -332,11 +331,14 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
         </div>
 
         <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between gap-2.5 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
-          <div
+          <button
+            type="button"
             onClick={handleDownloadSingleICal}
             className="flex items-center space-x-1.5 px-3.5 py-2 min-h-[40px] rounded-full hover:bg-black/[0.08] dark:hover:bg-white/[0.14] text-xs font-medium text-[#1d1d1f] dark:text-[#f5f5f7] active:scale-95 transition-all cursor-pointer"
           >
-          </div>
+            <Download className="w-3.5 h-3.5 text-[#fa243c]" />
+            <span>Pobierz .ics</span>
+          </button>
 
           <a
             href={usoswebUrl}

@@ -15,9 +15,7 @@ interface NavbarProps {
   isLive: boolean;
   user: USOSUser | null;
   onOpenSettings: () => void;
-  onOpenSearch: () => void;
   onOpenWallpaper: () => void;
-  onExportICal: () => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
 }

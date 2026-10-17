@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   KeyRound,
@@ -10,7 +10,7 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  Info
+  Info,
 } from 'lucide-react';
 import { USOSUser } from '@/lib/usos/types';
 
@@ -31,10 +31,17 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
   onLogout,
   onRefresh,
 }) => {
-  const [consumerKey] = useState('');
-  const [consumerSecret] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -46,10 +53,6 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          consumerKey: consumerKey.trim() || undefined,
-          consumerSecret: consumerSecret.trim() || undefined,
-        }),
       });
 
       const data = await res.json();
@@ -61,8 +64,9 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Wystąpił błąd autoryzacji');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Wystąpił błąd autoryzacji';
+      setErrorMsg(message);
     } finally {
       setLoading(false);
     }
@@ -77,10 +81,12 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
         className="w-full max-w-lg apple-card rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] animate-in slide-in-from-bottom-5 sm:slide-in-from-bottom-2 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Mobile drag bar */}
         <div className="sm:hidden pt-2.5 pb-0.5 flex justify-center">
           <div className="w-10 h-1 rounded-full bg-black/20 dark:bg-white/20" />
         </div>
 
+        {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#fa243c] to-[#fb5c74] text-white flex items-center justify-center shadow-md shadow-[#fa243c]/20">
@@ -104,6 +110,7 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
           </button>
         </div>
 
+        {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-4 text-xs">
           {isLive && user ? (
             <div className="p-4 rounded-2xl bg-[#34c759]/10 border border-[#34c759]/20 space-y-3">
@@ -113,10 +120,22 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
               </div>
 
               <div className="text-xs text-[#1d1d1f] dark:text-[#f5f5f7] space-y-1">
-                <p><strong>Student:</strong> {user.first_name} {user.last_name}</p>
-                {user.student_number && <p><strong>Nr albumu:</strong> {user.student_number}</p>}
-                {user.email && <p><strong>Email uczelniany:</strong> {user.email}</p>}
-                <p><strong>Uczelnia:</strong> Politechnika Rzeszowska</p>
+                <p>
+                  <strong>Student:</strong> {user.first_name} {user.last_name}
+                </p>
+                {user.student_number && (
+                  <p>
+                    <strong>Nr albumu:</strong> {user.student_number}
+                  </p>
+                )}
+                {user.email && (
+                  <p>
+                    <strong>Email uczelniany:</strong> {user.email}
+                  </p>
+                )}
+                <p>
+                  <strong>Uczelnia:</strong> Politechnika Rzeszowska
+                </p>
               </div>
 
               <div className="pt-2 flex items-center justify-between">
@@ -187,6 +206,7 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
           )}
         </div>
 
+        {/* Modal Footer */}
         <div className="p-4 bg-black/[0.02] dark:bg-white/[0.02] border-t border-black/[0.04] dark:border-white/[0.06] flex items-center justify-between pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:pb-4">
           <a
             href="https://buycoffee.to/qrin-dev"
