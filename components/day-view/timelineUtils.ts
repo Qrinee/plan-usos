@@ -72,7 +72,44 @@ export function computeDayBreaks(activities: USOSActivity[]): TimetableBreak[] {
   return breaks;
 }
 
-export function computeTimelineLayout(activities: USOSActivity[]): TimelineLayoutItem[] {
+export function getDayHourBounds(
+  activities: USOSActivity[],
+  isToday: boolean,
+  now: Date
+): { startHour: number; endHour: number } {
+  if (activities.length === 0) {
+    return { startHour: 8, endHour: 18 };
+  }
+
+  let minHour = 24;
+  let maxHour = 0;
+
+  for (const act of activities) {
+    const start = parseDate(act.start_time);
+    const end = parseDate(act.end_time);
+    minHour = Math.min(minHour, start.getHours());
+    maxHour = Math.max(maxHour, end.getHours() + (end.getMinutes() > 0 ? 1 : 0));
+  }
+
+  if (isToday) {
+    const curH = now.getHours();
+    if (curH >= 7 && curH <= 21) {
+      minHour = Math.min(minHour, curH);
+      maxHour = Math.max(maxHour, curH);
+    }
+  }
+
+  // 1 hour buffer before first class and after last class
+  const startHour = Math.max(7, minHour - 1);
+  const endHour = Math.min(21, Math.max(startHour + 5, maxHour + 1));
+
+  return { startHour, endHour };
+}
+
+export function computeTimelineLayout(
+  activities: USOSActivity[],
+  startHour: number = TIMELINE_START_HOUR
+): TimelineLayoutItem[] {
   if (activities.length === 0) return [];
 
   const items: TimelineLayoutItem[] = activities.map((act) => {
@@ -80,7 +117,7 @@ export function computeTimelineLayout(activities: USOSActivity[]): TimelineLayou
     const end = parseDate(act.end_time);
     const startMin = start.getHours() * 60 + start.getMinutes();
     const endMin = end.getHours() * 60 + end.getMinutes();
-    const topPx = Math.max(0, ((startMin - TIMELINE_START_HOUR * 60) / 60) * HOUR_HEIGHT);
+    const topPx = Math.max(0, ((startMin - startHour * 60) / 60) * HOUR_HEIGHT);
     const heightPx = Math.max(48, ((endMin - startMin) / 60) * HOUR_HEIGHT);
 
     return {

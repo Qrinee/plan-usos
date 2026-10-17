@@ -260,7 +260,7 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="apple-card rounded-3xl p-3 sm:p-5 min-h-[460px] sm:min-h-[520px] relative transition-all duration-300 overflow-hidden"
+        className="apple-card rounded-3xl p-3 sm:p-5 min-h-[520px] sm:min-h-[600px] relative transition-all duration-300 overflow-hidden"
       >
         {isNavigatingWeek && (
           <div className="absolute top-0 left-0 right-0 h-[2.5px] overflow-hidden rounded-t-3xl z-30">

@@ -11,6 +11,7 @@ interface DayBreakCardProps {
   now: Date;
   isToday: boolean;
   bIdx: number;
+  startHour?: number;
 }
 
 export const DayBreakCard: React.FC<DayBreakCardProps> = ({
@@ -18,10 +19,11 @@ export const DayBreakCard: React.FC<DayBreakCardProps> = ({
   now,
   isToday,
   bIdx,
+  startHour = TIMELINE_START_HOUR,
 }) => {
   const bStartMin = breakInfo.startTime.getHours() * 60 + breakInfo.startTime.getMinutes();
   const bEndMin = breakInfo.endTime.getHours() * 60 + breakInfo.endTime.getMinutes();
-  const bTop = ((bStartMin - TIMELINE_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+  const bTop = ((bStartMin - startHour * 60) / 60) * HOUR_HEIGHT;
   const bHeight = ((bEndMin - bStartMin) / 60) * HOUR_HEIGHT;
 
   if (breakInfo.durationMinutes < 15 || bHeight < 24) return null;

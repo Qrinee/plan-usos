@@ -10,6 +10,7 @@ import {
   TIMELINE_END_HOUR,
   HOUR_HEIGHT,
   TOTAL_TIMELINE_HEIGHT,
+  getDayHourBounds,
   computeDayBreaks,
   computeTimelineLayout,
 } from './timelineUtils';
@@ -32,16 +33,25 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const lastScrolledDateRef = useRef<string>('');
 
-  const timelineItems = useMemo(() => computeTimelineLayout(activities), [activities]);
+  const { startHour, endHour } = useMemo(() => {
+    return getDayHourBounds(activities, isToday, now);
+  }, [activities, isToday, now]);
+
+  const timelineItems = useMemo(
+    () => computeTimelineLayout(activities, startHour),
+    [activities, startHour]
+  );
   const dayBreaks = useMemo(() => computeDayBreaks(activities), [activities]);
 
   const timelineHours = useMemo(() => {
     const arr = [];
-    for (let h = TIMELINE_START_HOUR; h <= TIMELINE_END_HOUR; h++) {
+    for (let h = startHour; h <= endHour; h++) {
       arr.push(h);
     }
     return arr;
-  }, []);
+  }, [startHour, endHour]);
+
+  const totalHeight = (endHour - startHour) * HOUR_HEIGHT;
 
   // Auto-scroll timeline to current time or first class
   useEffect(() => {
@@ -51,20 +61,20 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({
 
     const timer = setTimeout(() => {
       if (!container) return;
-      let targetMin = 8 * 60; // 08:00 default
+      let targetMin = startHour * 60;
       const nowMin = now.getHours() * 60 + now.getMinutes();
 
-      if (isToday && nowMin >= TIMELINE_START_HOUR * 60 && nowMin <= TIMELINE_END_HOUR * 60) {
-        targetMin = Math.max(TIMELINE_START_HOUR * 60, nowMin - 60);
+      if (isToday && nowMin >= startHour * 60 && nowMin <= endHour * 60) {
+        targetMin = Math.max(startHour * 60, nowMin - 60);
       } else if (activities.length > 0) {
         const first = parseDate(activities[0].start_time);
         targetMin = Math.max(
-          TIMELINE_START_HOUR * 60,
+          startHour * 60,
           first.getHours() * 60 + first.getMinutes() - 30
         );
       }
 
-      const scrollY = Math.max(0, ((targetMin - TIMELINE_START_HOUR * 60) / 60) * HOUR_HEIGHT);
+      const scrollY = Math.max(0, ((targetMin - startHour * 60) / 60) * HOUR_HEIGHT);
       if (Math.abs(container.scrollTop - scrollY) > 90) {
         container.scrollTo({ top: scrollY, behavior: 'smooth' });
       }
@@ -72,20 +82,20 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [selectedDateStr, isToday, activities, now]);
+  }, [selectedDateStr, isToday, activities, now, startHour, endHour]);
 
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const showLiveTimeLine =
-    isToday && nowMin >= TIMELINE_START_HOUR * 60 && nowMin <= TIMELINE_END_HOUR * 60;
-  const liveTimeTop = ((nowMin - TIMELINE_START_HOUR * 60) / 60) * HOUR_HEIGHT;
+    isToday && nowMin >= startHour * 60 && nowMin <= endHour * 60;
+  const liveTimeTop = ((nowMin - startHour * 60) / 60) * HOUR_HEIGHT;
 
   return (
     <div
       ref={timelineScrollRef}
-      className="mt-3 overflow-y-auto max-h-[min(980px,calc(100dvh-170px))] min-h-[380px] sm:max-h-[640px] pr-1 scrollbar-thin select-none overscroll-contain touch-pan-y"
+      className="mt-3 overflow-y-auto sm:overflow-visible max-h-[min(1100px,calc(100dvh-120px))] sm:max-h-none min-h-[440px] pr-1 scrollbar-thin select-none overscroll-contain touch-pan-y"
     >
-      <div className="relative flex" style={{ height: TOTAL_TIMELINE_HEIGHT }}>
-        {/* Left Column: Hours Axis (07:00..21:00) */}
+      <div className="relative flex" style={{ height: totalHeight }}>
+        {/* Left Column: Hours Axis */}
         <div className="w-12 sm:w-14 shrink-0 relative select-none">
           {timelineHours.map((h, idx) => (
             <div
@@ -136,6 +146,7 @@ export const DayTimeline: React.FC<DayTimelineProps> = ({
               now={now}
               isToday={isToday}
               bIdx={bIdx}
+              startHour={startHour}
             />
           ))}
 

@@ -242,9 +242,6 @@ export default function TimetablePage() {
         user={user}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
-        onOpenSearch={() => setIsSearchOpen(true)}
-        darkMode={darkMode}
-        setDarkMode={toggleDarkMode}
       />
 
       {/* Footer */}
@@ -282,6 +279,8 @@ export default function TimetablePage() {
         onSetBgBlur={handleSetBgBlur}
         bgDim={bgDim}
         onSetBgDim={handleSetBgDim}
+        darkMode={darkMode}
+        setDarkMode={toggleDarkMode}
       />
 
       <PwaInstallPrompt />
