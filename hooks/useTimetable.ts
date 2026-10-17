@@ -6,6 +6,13 @@ import { generateICalendar } from '@/lib/usos/ical';
 import { getMonday, getInitialMonday, parseDate } from '@/lib/utils/date';
 import { ViewMode } from '@/components/TimetableControls';
 
+function getIsMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const isMobileUA = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
+  const isNarrow = window.innerWidth < 768;
+  return isMobileUA || isNarrow;
+}
+
 export function useTimetable() {
   const [baseMonday, setBaseMonday] = useState<Date>(() => getInitialMonday());
   const [activities, setActivities] = useState<USOSActivity[]>([]);
@@ -15,6 +22,7 @@ export function useTimetable() {
   const [authBanner, setAuthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const weekCacheRef = useRef<Map<string, USOSActivity[]>>(new Map());
+  const lastIsMobileRef = useRef<boolean | null>(null);
 
   const [isLive, setIsLive] = useState(false);
   const [user, setUser] = useState<USOSUser | null>(null);
@@ -333,14 +341,41 @@ export function useTimetable() {
     fetchInitialTimetable(baseMonday);
 
     try {
-      const savedView = localStorage.getItem('usos_preferred_view') as ViewMode | null;
+      const isMobile = getIsMobileDevice();
+      lastIsMobileRef.current = isMobile;
+      const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
+      const defaultMode: ViewMode = isMobile ? 'day' : 'week';
+
+      // Usuń stary, wspólny klucz jeśli istnieje, by telefon nie odziedziczył 'week'
+      localStorage.removeItem('usos_preferred_view');
+
+      const savedView = localStorage.getItem(storageKey) as ViewMode | null;
       if (savedView && (savedView === 'week' || savedView === 'day' || savedView === 'list')) {
         setViewMode(savedView);
-      } else if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        setViewMode('day');
+      } else {
+        setViewMode(defaultMode);
       }
     } catch { }
   }, [checkAuth, fetchInitialTimetable, baseMonday]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = getIsMobileDevice();
+      if (lastIsMobileRef.current !== null && isMobile !== lastIsMobileRef.current) {
+        lastIsMobileRef.current = isMobile;
+        const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
+        const saved = localStorage.getItem(storageKey) as ViewMode | null;
+        if (saved && (saved === 'week' || saved === 'day' || saved === 'list')) {
+          setViewMode(saved);
+        } else {
+          setViewMode(isMobile ? 'day' : 'week');
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handlePrevWeek = () => {
     const next = new Date(baseMonday);
@@ -369,7 +404,9 @@ export function useTimetable() {
     setTransitionKey((prev) => prev + 1);
     setViewMode(mode);
     try {
-      localStorage.setItem('usos_preferred_view', mode);
+      const isMobile = getIsMobileDevice();
+      const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
+      localStorage.setItem(storageKey, mode);
     } catch { }
   };
 

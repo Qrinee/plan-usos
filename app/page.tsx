@@ -71,7 +71,7 @@ export default function TimetablePage() {
   } = useTimetable();
 
   return (
-    <div className={`min-h-screen flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'}`}>
+    <div className={`min-h-screen pt-10 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'}`}>
       {customBg ? (
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
           <div
