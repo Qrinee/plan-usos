@@ -143,19 +143,23 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
 
   const buildingShortName = knownGeo?.shortName || (buildingCode ? `Budynek ${buildingCode}` : 'Politechnika Rzeszowska');
   const buildingAddress = activity.building_address || knownGeo?.address || 'al. Powstańców Warszawy 12, 35-959 Rzeszów';
-  const location = activity.building_location || knownGeo?.location || null;
+  const location =
+    activity.building_location ||
+    knownGeo?.location ||
+    { lat: 50.019044, long: 21.989185 };
 
   const baseColor = activity.color || '#fa243c';
 
-  const googleMapsUrl = location
-    ? `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.long}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${buildingShortName}, Politechnika Rzeszowska, Rzeszów`)}`;
+  // Google Maps: pin directly at exact building coordinates
+  const googleMapsUrl = `https://www.google.com/maps?q=${location.lat},${location.long}`;
 
-  const appleMapsUrl = location
+  // Apple Maps: pin directly at exact building coordinates with building name
+  const appleMapsUrl = `https://maps.apple.com/?ll=${location.lat},${location.long}&q=${encodeURIComponent(buildingShortName)}`;
+
+  // Default turn-by-turn navigation URL for card click
+  const navDirectionsUrl = isAppleDevice
     ? `https://maps.apple.com/?daddr=${location.lat},${location.long}&q=${encodeURIComponent(buildingShortName)}`
-    : `https://maps.apple.com/?q=${encodeURIComponent(`${buildingShortName}, Politechnika Rzeszowska, Rzeszów`)}`;
-
-  const defaultMapsUrl = isAppleDevice ? appleMapsUrl : googleMapsUrl;
+    : `https://www.google.com/maps/dir/?api=1&destination=${location.lat},${location.long}`;
 
   const handleDownloadSingleICal = () => {
     const icsContent = generateICalendar([activity], name);
@@ -252,11 +256,11 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => window.open(defaultMapsUrl, '_blank', 'noopener,noreferrer')}
+            onClick={() => window.open(navDirectionsUrl, '_blank', 'noopener,noreferrer')}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                window.open(defaultMapsUrl, '_blank', 'noopener,noreferrer');
+                window.open(navDirectionsUrl, '_blank', 'noopener,noreferrer');
               }
             }}
             title={`Kliknij, aby nawigować w ${isAppleDevice ? 'Apple Maps' : 'Google Maps'}: ${buildingShortName}`}
@@ -283,16 +287,6 @@ export const ClassDetailModal: React.FC<ClassDetailModalProps> = ({
                   <Building2 className="w-3.5 h-3.5 mr-1.5 inline opacity-70 shrink-0 mt-0.5 text-[#fa243c]" />
                   <span className="leading-snug">{buildingTitle}</span>
                 </p>
-                <p className="text-[11px] text-[#86868b] mt-0.5 pl-5">
-                  {buildingAddress}
-                </p>
-                {location && (
-                  <div className="mt-1.5 pl-5 flex items-center space-x-2">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-black/[0.04] dark:bg-white/[0.06] text-[#86868b]">
-                      GPS: {location.lat.toFixed(5)}, {location.long.toFixed(5)}
-                    </span>
-                  </div>
-                )}
               </div>
             </div>
 
