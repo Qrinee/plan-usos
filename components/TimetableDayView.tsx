@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { USOSActivity } from '@/lib/usos/types';
 import { formatTime } from '@/lib/utils/date';
 import { ViewMode } from '@/components/TimetableControls';
@@ -20,6 +20,8 @@ interface TimetableDayViewProps {
   onNavigateToMonday?: (monday: Date) => void;
   isNavigatingWeek?: boolean;
   onSwitchViewMode?: (mode: ViewMode) => void;
+  slideDirection?: 'right' | 'left' | 'fade';
+  transitionKey?: number;
 }
 
 export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
@@ -32,6 +34,8 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   onToday,
   onNavigateToMonday,
   isNavigatingWeek = false,
+  slideDirection,
+  transitionKey,
 }) => {
   const useIsomorphicLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
 
@@ -106,11 +110,21 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   });
 
   const prevBaseMondayRef = useRef<number>(baseMonday.getTime());
+  const [weekSlideAnim, setWeekSlideAnim] = useState<string>('');
+  const [weekAnimKey, setWeekAnimKey] = useState<number>(0);
+  const [daySlideAnim, setDaySlideAnim] = useState<string>('');
+  const [weekBadge, setWeekBadge] = useState<{ title: string; detail: string; isNext: boolean } | null>(null);
 
-  // Ensure advancing forward or moving from Friday starts on Monday of the new week
+  // Card & hint refs for smooth 60/120fps touch drag feedback
+  const cardRef = useRef<HTMLDivElement>(null);
+  const hintRightRef = useRef<HTMLDivElement>(null);
+  const hintLeftRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+  const hasHorizontalIntentRef = useRef<boolean | null>(null);
+
+  // Detect week changes (from swiping, week buttons, or ribbon scrolling)
   useIsomorphicLayoutEffect(() => {
-    const existsInCurrentWeek = currentWeekDays.some((d) => d.dateStr === selectedDateStr);
-    if (!existsInCurrentWeek && currentWeekDays.length > 0) {
+    if (baseMonday.getTime() !== prevBaseMondayRef.current) {
       const isMovingForward = baseMonday.getTime() > prevBaseMondayRef.current;
       prevBaseMondayRef.current = baseMonday.getTime();
 
@@ -132,10 +146,30 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
       if (targetDay) {
         setSelectedDateStr(targetDay.dateStr);
       }
-    } else {
-      prevBaseMondayRef.current = baseMonday.getTime();
+
+      // Animate the whole view
+      const animClass = isMovingForward ? 'anim-week-slide-right' : 'anim-week-slide-left';
+      setWeekSlideAnim(animClass);
+      setWeekAnimKey((k) => k + 1);
+
+      // Display floating Apple-style week transition notification badge
+      const endDay = new Date(baseMonday);
+      endDay.setDate(baseMonday.getDate() + (showWeekend ? 6 : 4));
+      const rangeText = `${baseMonday.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })} – ${endDay.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}`;
+
+      setWeekBadge({
+        title: isMovingForward ? 'Następny tydzień' : 'Poprzedni tydzień',
+        detail: `${targetDay?.name || 'Poniedziałek'}, ${rangeText}`,
+        isNext: isMovingForward,
+      });
+
+      const timer = setTimeout(() => {
+        setWeekBadge(null);
+      }, 2600);
+
+      return () => clearTimeout(timer);
     }
-  }, [baseMonday, currentWeekDays, selectedDateStr]);
+  }, [baseMonday, currentWeekDays, selectedDateStr, showWeekend]);
 
   const activeDay = allDays.find((d) => d.dateStr === selectedDateStr) || currentWeekDays[0];
 
@@ -172,12 +206,16 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   const goToNextDay = () => {
     const curIdx = currentWeekDays.findIndex((d) => d.dateStr === selectedDateStr);
     if (curIdx >= 0 && curIdx < currentWeekDays.length - 1) {
+      setDaySlideAnim('anim-day-slide-right');
       setSelectedDateStr(currentWeekDays[curIdx + 1].dateStr);
     } else {
+      // Swiping left on Friday / last day -> Next week (Monday)!
       const nextMonday = new Date(baseMonday);
       nextMonday.setDate(baseMonday.getDate() + 7);
       const nextMondayStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
       setSelectedDateStr(nextMondayStr);
+      setWeekSlideAnim('anim-week-slide-right');
+      setWeekAnimKey((k) => k + 1);
       if (onNavigateToMonday) {
         onNavigateToMonday(nextMonday);
       } else if (onNextWeek) {
@@ -189,8 +227,10 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   const goToPrevDay = () => {
     const curIdx = currentWeekDays.findIndex((d) => d.dateStr === selectedDateStr);
     if (curIdx > 0) {
+      setDaySlideAnim('anim-day-slide-left');
       setSelectedDateStr(currentWeekDays[curIdx - 1].dateStr);
     } else {
+      // Swiping right on Monday -> Prev week (Friday)!
       const prevMonday = new Date(baseMonday);
       prevMonday.setDate(baseMonday.getDate() - 7);
       const lastDayOffset = showWeekend ? 6 : 4;
@@ -198,6 +238,8 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
       targetPrevDate.setDate(prevMonday.getDate() + lastDayOffset);
       const targetPrevDateStr = `${targetPrevDate.getFullYear()}-${(targetPrevDate.getMonth() + 1).toString().padStart(2, '0')}-${targetPrevDate.getDate().toString().padStart(2, '0')}`;
       setSelectedDateStr(targetPrevDateStr);
+      setWeekSlideAnim('anim-week-slide-left');
+      setWeekAnimKey((k) => k + 1);
       if (onNavigateToMonday) {
         onNavigateToMonday(prevMonday);
       } else if (onPrevWeek) {
@@ -209,21 +251,88 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    isDraggingRef.current = true;
+    hasHorizontalIntentRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || touchStartX.current === null || touchStartY.current === null) return;
+    const deltaX = e.touches[0].clientX - touchStartX.current;
+    const deltaY = e.touches[0].clientY - touchStartY.current;
+
+    if (hasHorizontalIntentRef.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        hasHorizontalIntentRef.current = Math.abs(deltaX) > Math.abs(deltaY) * 1.25;
+      }
+    }
+
+    if (!hasHorizontalIntentRef.current) return;
+
+    // Dampen drag translation for smooth tactile response
+    const damp = 0.35;
+    const translateX = Math.max(-85, Math.min(85, deltaX * damp));
+    if (cardRef.current) {
+      cardRef.current.style.transform = `translate3d(${translateX}px, 0, 0)`;
+      cardRef.current.style.transition = 'none';
+    }
+
+    // Show edge preview hint
+    if (deltaX < -20) {
+      const progress = Math.min(1, (Math.abs(deltaX) - 20) / 40);
+      if (hintRightRef.current) {
+        hintRightRef.current.style.opacity = progress.toString();
+        hintRightRef.current.style.transform = `translate3d(0, -50%, 0) scale(${0.85 + progress * 0.15})`;
+      }
+      if (hintLeftRef.current) hintLeftRef.current.style.opacity = '0';
+    } else if (deltaX > 20) {
+      const progress = Math.min(1, (deltaX - 20) / 40);
+      if (hintLeftRef.current) {
+        hintLeftRef.current.style.opacity = progress.toString();
+        hintLeftRef.current.style.transform = `translate3d(0, -50%, 0) scale(${0.85 + progress * 0.15})`;
+      }
+      if (hintRightRef.current) hintRightRef.current.style.opacity = '0';
+    } else {
+      if (hintRightRef.current) hintRightRef.current.style.opacity = '0';
+      if (hintLeftRef.current) hintLeftRef.current.style.opacity = '0';
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
+    if (!isDraggingRef.current || touchStartX.current === null) return;
+    isDraggingRef.current = false;
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    const wasHorizontal = hasHorizontalIntentRef.current;
     touchStartX.current = null;
     touchStartY.current = null;
+    hasHorizontalIntentRef.current = null;
 
-    if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    if (hintRightRef.current) hintRightRef.current.style.opacity = '0';
+    if (hintLeftRef.current) hintLeftRef.current.style.opacity = '0';
+
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+      cardRef.current.style.transform = 'translate3d(0, 0, 0)';
+    }
+
+    if (wasHorizontal && Math.abs(deltaX) > 50) {
       if (deltaX < 0) {
         goToNextDay();
       } else {
         goToPrevDay();
       }
+    }
+  };
+
+  const handleTouchCancel = () => {
+    isDraggingRef.current = false;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    hasHorizontalIntentRef.current = null;
+    if (hintRightRef.current) hintRightRef.current.style.opacity = '0';
+    if (hintLeftRef.current) hintLeftRef.current.style.opacity = '0';
+    if (cardRef.current) {
+      cardRef.current.style.transition = 'transform 0.26s cubic-bezier(0.16, 1, 0.3, 1)';
+      cardRef.current.style.transform = 'translate3d(0, 0, 0)';
     }
   };
 
@@ -239,8 +348,19 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
     year: 'numeric',
   })}`;
 
+  const curDayIndex = currentWeekDays.findIndex((d) => d.dateStr === selectedDateStr);
+  const isFridayOrLast = curDayIndex === currentWeekDays.length - 1;
+  const isMondayFirst = curDayIndex === 0;
+  const nextDayName = curDayIndex >= 0 && curDayIndex < currentWeekDays.length - 1 ? currentWeekDays[curDayIndex + 1]?.name : null;
+  const prevDayName = curDayIndex > 0 ? currentWeekDays[curDayIndex - 1]?.name : null;
+
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div
+      key={`week-wrapper-${weekAnimKey}`}
+      className={`space-y-3 sm:space-y-4 relative ${weekSlideAnim}`}
+      onAnimationEnd={() => setWeekSlideAnim('')}
+    >
+
       {/* Week Header & Day Ribbon */}
       <DayRibbon
         weeksList={weeksList}
@@ -258,10 +378,39 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
 
       {/* Active Day Content Card */}
       <div
+        ref={cardRef}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="apple-card rounded-3xl p-3 sm:p-5 min-h-[520px] sm:min-h-[600px] relative transition-all duration-300 overflow-hidden"
+        onTouchCancel={handleTouchCancel}
+        className="apple-card rounded-3xl p-3 sm:p-5 min-h-[520px] sm:min-h-[600px] relative transition-shadow duration-300 overflow-hidden"
       >
+        {/* Edge Swipe Preview Hints */}
+        <div
+          ref={hintRightRef}
+          style={{ opacity: 0 }}
+          className="absolute right-3 sm:right-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none transition-opacity duration-150"
+        >
+          <div className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#fa243c] to-[#fb5c74] text-white shadow-xl shadow-[#fa243c]/40 text-xs font-semibold backdrop-blur-md border border-white/20">
+            <span>
+              {isFridayOrLast ? 'Następny tydzień (Pon)' : nextDayName || 'Dalej'}
+            </span>
+            <ArrowRight className="w-4 h-4 animate-pulse shrink-0" />
+          </div>
+        </div>
+
+        <div
+          ref={hintLeftRef}
+          style={{ opacity: 0 }}
+          className="absolute left-3 sm:left-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none transition-opacity duration-150"
+        >
+          <div className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-[#fa243c] to-[#fb5c74] text-white shadow-xl shadow-[#fa243c]/40 text-xs font-semibold backdrop-blur-md border border-white/20">
+            <ArrowLeft className="w-4 h-4 animate-pulse shrink-0" />
+            <span>
+              {isMondayFirst ? 'Poprzedni tydzień (Pt)' : prevDayName || 'Wstecz'}
+            </span>
+          </div>
+        </div>
         {isNavigatingWeek && (
           <div className="absolute top-0 left-0 right-0 h-[2.5px] overflow-hidden rounded-t-3xl z-30">
             <div className="h-full w-full bg-gradient-to-r from-transparent via-[#fa243c] to-transparent animate-pulse" />
@@ -312,7 +461,11 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
         )}
 
         {/* Content Container */}
-        <div key={`day-content-${selectedDateStr}`} className="anim-timeline-enter">
+        <div
+          key={`day-content-${selectedDateStr}`}
+          className={daySlideAnim || 'anim-timeline-enter'}
+          onAnimationEnd={() => setDaySlideAnim('')}
+        >
           {activeDayActivities.length === 0 ? (
             <div className="py-20 text-center text-[#86868b] flex flex-col items-center justify-center min-h-[340px]">
               <CheckCircle className="w-12 h-12 mx-auto mb-2 text-[#86868b]/40" />

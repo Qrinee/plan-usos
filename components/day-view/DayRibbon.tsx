@@ -189,7 +189,7 @@ export const DayRibbon: React.FC<DayRibbonProps> = ({
       <div className="flex items-center justify-between px-1 text-xs sm:text-sm">
         <div className="flex items-center space-x-1.5 font-medium">
           <Calendar className="w-3.5 h-3.5 text-[#fa243c]" />
-          <span className="text-[#1d1d1f] dark:text-[#f5f5f7] font-semibold text-xs sm:text-sm">
+          <span key={weekRangeStr} className="text-[#1d1d1f] dark:text-[#f5f5f7] font-semibold text-xs sm:text-sm anim-filter-fade">
             Tydzień {weekRangeStr}
           </span>
           {isNavigatingWeek && (

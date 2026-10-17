@@ -378,6 +378,74 @@ body {
   will-change: transform, opacity;
 }
 
+@keyframes week-slide-in-right {
+  0% {
+    opacity: 0.15;
+    transform: translate3d(85px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes week-slide-in-left {
+  0% {
+    opacity: 0.15;
+    transform: translate3d(-85px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.anim-week-slide-right {
+  animation: week-slide-in-right 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.anim-week-slide-left {
+  animation: week-slide-in-left 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes day-slide-in-right {
+  0% {
+    opacity: 0.35;
+    transform: translate3d(36px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes day-slide-in-left {
+  0% {
+    opacity: 0.35;
+    transform: translate3d(-36px, 0, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.anim-day-slide-right {
+  animation: day-slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.anim-day-slide-left {
+  animation: day-slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
 .anim-filter-fade {
   animation: smooth-fade-scale 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;

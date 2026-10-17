@@ -185,6 +185,8 @@ export default function TimetablePage() {
                       navigateToWeek(targetMonday, dir);
                     }}
                     isNavigatingWeek={isNavigatingWeek}
+                    slideDirection={slideDirection}
+                    transitionKey={transitionKey}
                   />
                 ) : (
                   <div
