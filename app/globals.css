@@ -39,6 +39,8 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
+  overflow-x: hidden;
 }
 
 body {
@@ -251,6 +253,38 @@ body {
 
 .anim-pill-pop {
   animation: pill-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes timeline-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes item-card-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translate3d(0, 6px, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+}
+
+.anim-timeline-enter {
+  animation: timeline-enter 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.anim-item-card {
+  animation: item-card-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .apple-segmented-container {

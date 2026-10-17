@@ -19,18 +19,14 @@ export const PwaInstallPrompt: React.FC = () => {
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if running as installed standalone PWA
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
 
-    // Detect iOS
     const iosDevice =
       /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(iosDevice);
-
-    // Listen for beforeinstallprompt event (Android / Chromium)
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -38,14 +34,12 @@ export const PwaInstallPrompt: React.FC = () => {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
-    // Listen for successful install
     window.addEventListener('appinstalled', () => {
       setDeferredPrompt(null);
       setShowInstalledToast(true);
       setTimeout(() => setShowInstalledToast(false), 4000);
     });
 
-    // Register service worker if available
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
       navigator.serviceWorker
         .register('/sw.js')
@@ -57,7 +51,6 @@ export const PwaInstallPrompt: React.FC = () => {
         });
     }
 
-    // Listen for custom trigger from Navbar or other buttons
     const handleOpenInstall = () => {
       handleInstallClick();
     };
@@ -85,7 +78,6 @@ export const PwaInstallPrompt: React.FC = () => {
 
   return (
     <>
-      {/* Offline Status Warning Banner */}
       {!isOnline && (
         <div className="w-full bg-amber-500/15 border-b border-amber-500/25 px-4 py-2 text-xs flex items-center justify-between text-amber-600 dark:text-amber-400 animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-center space-x-2 max-w-7xl mx-auto w-full">
@@ -97,7 +89,6 @@ export const PwaInstallPrompt: React.FC = () => {
         </div>
       )}
 
-      {/* Installed Toast Notification */}
       {showInstalledToast && (
         <div className="fixed bottom-5 right-5 z-50 apple-glass rounded-2xl p-4 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs shadow-xl flex items-center space-x-2.5 animate-in fade-in duration-300">
           <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
@@ -107,7 +98,6 @@ export const PwaInstallPrompt: React.FC = () => {
         </div>
       )}
 
-      {/* iOS Instructions Modal */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
@@ -178,7 +168,6 @@ export const PwaInstallPrompt: React.FC = () => {
         </div>
       )}
 
-      {/* Floating or Banner Install Prompt (if not installed and not dismissed) */}
       {!isStandalone && !isDismissed && (deferredPrompt || isIOS) && (
         <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-40 max-w-sm apple-glass rounded-2xl p-3 sm:p-3.5 border border-black/[0.08] dark:border-white/[0.1] shadow-xl flex items-center justify-between gap-3 animate-in slide-in-from-bottom-4 duration-300">
           <div className="flex items-center space-x-2.5 min-w-0">

@@ -32,24 +32,22 @@ function makeChunk(type, data) {
 function createPng(width, height, getPixel) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-  // IHDR
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // 8 bits per channel
-  ihdr[9] = 6; // RGBA
-  ihdr[10] = 0; // compression
-  ihdr[11] = 0; // filter
-  ihdr[12] = 0; // interlace
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  ihdr[10] = 0;
+  ihdr[11] = 0;
+  ihdr[12] = 0;
   const ihdrChunk = makeChunk('IHDR', ihdr);
 
-  // Scanlines with filter byte 0
   const rowSize = 1 + width * 4;
   const rawData = Buffer.alloc(height * rowSize);
 
   for (let y = 0; y < height; y++) {
     const rowOffset = y * rowSize;
-    rawData[rowOffset] = 0; // filter byte = None
+    rawData[rowOffset] = 0;
     for (let x = 0; x < width; x++) {
       const [r, g, b, a] = getPixel(x, y, width, height);
       const pxOffset = rowOffset + 1 + x * 4;
@@ -67,14 +65,12 @@ function createPng(width, height, getPixel) {
   return Buffer.concat([signature, ihdrChunk, idatChunk, iendChunk]);
 }
 
-// Generate icon with smooth rounded corners, PRZ vibrant gradient (#fa243c to #7c3aed), and graduation cap symbol
 function renderIcon(size) {
   const cornerRadius = size * 0.22;
   const cx = size / 2;
   const cy = size / 2;
 
   return createPng(size, size, (x, y, w, h) => {
-    // Rounded rect distance
     const dx = Math.max(0, Math.abs(x - cx) - (cx - cornerRadius));
     const dy = Math.max(0, Math.abs(y - cy) - (cy - cornerRadius));
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -98,13 +94,10 @@ function renderIcon(size) {
     const ny = (y - cy) / (size * 0.38);
 
     const capRhombus = Math.abs(nx) + Math.abs(ny + 0.15) * 1.8 <= 0.85;
-    // Cap headband underneath: nx in [-0.5, 0.5] and ny in [0.05, 0.4] and curved bottom
     const capBase = Math.abs(nx) <= 0.45 && ny >= 0.05 && ny <= 0.35 && (nx * nx * 0.6 + ny <= 0.4);
-    // Tassel string & dot
     const tassel = (Math.abs(nx + 0.6) < 0.05 && ny >= -0.1 && ny <= 0.4) || (Math.sqrt((nx + 0.6) ** 2 + (ny - 0.4) ** 2) < 0.1);
 
     if (capRhombus || capBase || tassel) {
-      // White emblem with slight drop shadow feel
       r = 255;
       g = 255;
       b = 255;

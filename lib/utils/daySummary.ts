@@ -37,7 +37,6 @@ export function computeDaySummary(
   const currentMonth = now.getMonth();
   const currentDate = now.getDate();
 
-  // Filter activities strictly for today
   const todayActivities = activities
     .filter((act) => {
       const start = parseDate(act.start_time);
@@ -100,7 +99,6 @@ export function computeDaySummary(
       ? todayActivities[nextIndex + 1]
       : null;
 
-  // Compute gaps / okienka (> 20 min break between consecutive classes)
   const gaps: DayGap[] = [];
   let totalGapMinutes = 0;
 
@@ -121,7 +119,6 @@ export function computeDaySummary(
     }
   }
 
-  // Calculate day progress percentage
   const totalDaySpan = lastEndTime.getTime() - firstStartTime.getTime();
   let progressPercent = 0;
 
@@ -154,7 +151,6 @@ export function computeDaySummary(
     remainingTimeStr = 'Zajęcia zakończone 🎉';
   }
 
-  // Campus transit calculation
   let transitInfo: TransitAnalysis | null = null;
   if (ongoingActivity && subsequentActivity) {
     transitInfo = analyzeCampusTransit(ongoingActivity, subsequentActivity);

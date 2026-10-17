@@ -31,7 +31,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setDarkMode,
 }) => {
   return (
-    <header className="sticky top-0 z-40 w-full apple-glass transition-colors pt-safe">
+    <header className="top-0 z-40 w-full apple-glass transition-colors pt-safe">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-15 flex items-center justify-between">
         <div className="flex items-center space-x-2.5 sm:space-x-3">
           <div className="w-8 h-8 sm:w-8.5 sm:h-8.5 rounded-xl bg-gradient-to-tr from-[#fa243c] via-[#fb5c74] to-[#a855f7] flex items-center justify-center text-white shadow-sm shadow-[#fa243c]/20 shrink-0">

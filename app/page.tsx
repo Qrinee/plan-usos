@@ -63,6 +63,7 @@ export default function TimetablePage() {
     handlePrevWeek,
     handleNextWeek,
     handleToday,
+    navigateToWeek,
     handleCategoryChange,
     handleViewModeChange,
     handleExportICal,
@@ -174,6 +175,11 @@ export default function TimetablePage() {
           </div>
         ) : (
           <>
+            <LiveStatusBar
+              activities={filteredActivities}
+              isOfflineLoaded={isOfflineLoaded}
+              lastSyncTime={lastSyncTime}
+            />
             {activities.length > 0 && (
               <UpcomingBanner
                 activities={activities}
@@ -222,79 +228,82 @@ export default function TimetablePage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <LiveStatusBar
-                  activities={filteredActivities}
-                  isOfflineLoaded={isOfflineLoaded}
-                  lastSyncTime={lastSyncTime}
-                />
-
-                <div
-                  key={`${baseMonday.toISOString()}-${selectedCategory}-${viewMode}-${transitionKey}`}
-                  className={
-                    slideDirection === 'right'
-                      ? 'anim-slide-right'
-                      : slideDirection === 'left'
-                        ? 'anim-slide-left'
-                        : 'anim-filter-fade'
-                  }
-                >
-                  {filteredActivities.length === 0 ? (
-                    <div className="apple-card rounded-3xl p-6 sm:p-12 text-center shadow-xs space-y-3">
-                      <div className="w-12 h-12 mx-auto rounded-2xl bg-[#fa243c]/10 text-[#fa243c] flex items-center justify-center">
-                        <Calendar className="w-6 h-6" />
+                {viewMode === 'day' ? (
+                  <TimetableDayView
+                    activities={filteredActivities}
+                    baseMonday={baseMonday}
+                    showWeekend={showWeekend}
+                    onSelectActivity={(act) => setSelectedActivity(act)}
+                    onPrevWeek={handlePrevWeek}
+                    onNextWeek={handleNextWeek}
+                    onToday={handleToday}
+                    onNavigateToMonday={(targetMonday) => {
+                      const dir = targetMonday.getTime() > baseMonday.getTime() ? 'right' : 'left';
+                      navigateToWeek(targetMonday, dir);
+                    }}
+                    isNavigatingWeek={isNavigatingWeek}
+                    onSwitchViewMode={handleViewModeChange}
+                  />
+                ) : (
+                  <div
+                    key={`${baseMonday.toISOString()}-${selectedCategory}-${viewMode}-${transitionKey}`}
+                    className={
+                      slideDirection === 'right'
+                        ? 'anim-slide-right'
+                        : slideDirection === 'left'
+                          ? 'anim-slide-left'
+                          : 'anim-filter-fade'
+                    }
+                  >
+                    {filteredActivities.length === 0 ? (
+                      <div className="apple-card rounded-3xl p-6 sm:p-12 text-center shadow-xs space-y-3">
+                        <div className="w-12 h-12 mx-auto rounded-2xl bg-[#fa243c]/10 text-[#fa243c] flex items-center justify-center">
+                          <Calendar className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-semibold text-[#1d1d1f] dark:text-[#f5f5f7]">
+                            Brak zajęć w wybranym tygodniu
+                          </h3>
+                          <p className="text-xs text-[#86868b] mt-1 max-w-md mx-auto">
+                            Połączono z Twoim kontem USOS PRZ ({user?.first_name} {user?.last_name}). W tym tygodniu nie masz zaplanowanych zajęć.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                          <button
+                            onClick={handleNextWeek}
+                            className="px-4 py-2 rounded-full bg-gradient-to-r from-[#fa243c] to-[#fb5c74] hover:opacity-95 text-white font-medium text-xs transition-all shadow-md shadow-[#fa243c]/20 active:scale-95"
+                          >
+                            Sprawdź następny tydzień
+                          </button>
+                          <button
+                            onClick={() => setIsSearchOpen(true)}
+                            className="px-4 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-xs transition-all active:scale-95"
+                          >
+                            Katalog przedmiotów
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="text-base font-semibold text-[#1d1d1f] dark:text-[#f5f5f7]">
-                          Brak zajęć w wybranym tygodniu
-                        </h3>
-                        <p className="text-xs text-[#86868b] mt-1 max-w-md mx-auto">
-                          Połączono z Twoim kontem USOS PRZ ({user?.first_name} {user?.last_name}). W tym tygodniu nie masz zaplanowanych zajęć.
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                        <button
-                          onClick={handleNextWeek}
-                          className="px-4 py-2 rounded-full bg-gradient-to-r from-[#fa243c] to-[#fb5c74] hover:opacity-95 text-white font-medium text-xs transition-all shadow-md shadow-[#fa243c]/20 active:scale-95"
-                        >
-                          Sprawdź następny tydzień
-                        </button>
-                        <button
-                          onClick={() => setIsSearchOpen(true)}
-                          className="px-4 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.08] hover:bg-black/[0.08] text-[#1d1d1f] dark:text-[#f5f5f7] font-medium text-xs transition-all active:scale-95"
-                        >
-                          Katalog przedmiotów
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {viewMode === 'week' && (
-                        <TimetableWeekView
-                          activities={filteredActivities}
-                          baseMonday={baseMonday}
-                          showWeekend={showWeekend}
-                          onSelectActivity={(act) => setSelectedActivity(act)}
-                        />
-                      )}
+                    ) : (
+                      <>
+                        {viewMode === 'week' && (
+                          <TimetableWeekView
+                            activities={filteredActivities}
+                            baseMonday={baseMonday}
+                            showWeekend={showWeekend}
+                            onSelectActivity={(act) => setSelectedActivity(act)}
+                          />
+                        )}
 
-                      {viewMode === 'day' && (
-                        <TimetableDayView
-                          activities={filteredActivities}
-                          baseMonday={baseMonday}
-                          showWeekend={showWeekend}
-                          onSelectActivity={(act) => setSelectedActivity(act)}
-                        />
-                      )}
-
-                      {viewMode === 'list' && (
-                        <TimetableListView
-                          activities={filteredActivities}
-                          onSelectActivity={(act) => setSelectedActivity(act)}
-                        />
-                      )}
-                    </>
-                  )}
-                </div>
+                        {viewMode === 'list' && (
+                          <TimetableListView
+                            activities={filteredActivities}
+                            onSelectActivity={(act) => setSelectedActivity(act)}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </>

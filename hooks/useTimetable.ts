@@ -3,11 +3,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { USOSActivity, USOSUser } from '@/lib/usos/types';
 import { generateICalendar } from '@/lib/usos/ical';
-import { getMonday } from '@/lib/utils/date';
+import { getMonday, getInitialMonday, parseDate } from '@/lib/utils/date';
 import { ViewMode } from '@/components/TimetableControls';
 
 export function useTimetable() {
-  const [baseMonday, setBaseMonday] = useState<Date>(() => getMonday(new Date()));
+  const [baseMonday, setBaseMonday] = useState<Date>(() => getInitialMonday());
   const [activities, setActivities] = useState<USOSActivity[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false);
@@ -33,7 +33,6 @@ export function useTimetable() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Load last sync timestamp and cached user on mount
   useEffect(() => {
     try {
       const savedSync = localStorage.getItem('usos_last_sync_time');
@@ -44,7 +43,7 @@ export function useTimetable() {
         const parsed = JSON.parse(cachedUser);
         if (parsed) setUser(parsed);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const checkAuth = useCallback(async () => {
@@ -58,7 +57,7 @@ export function useTimetable() {
         if (data.user) {
           try {
             localStorage.setItem('usos_cached_user', JSON.stringify(data.user));
-          } catch {}
+          } catch { }
         }
         return authed;
       }
@@ -70,9 +69,43 @@ export function useTimetable() {
           setUser(JSON.parse(cachedUser));
           setIsLive(true);
         }
-      } catch {}
+      } catch { }
     }
     return false;
+  }, []);
+
+  const initialFetchDoneRef = useRef(false);
+
+  const prefetchWeek = useCallback(async (monday: Date) => {
+    const startStr = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
+    if (weekCacheRef.current.has(startStr)) return;
+
+    try {
+      if (typeof window !== 'undefined') {
+        const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
+        if (cachedRaw) {
+          try {
+            const cachedActs = JSON.parse(cachedRaw);
+            weekCacheRef.current.set(startStr, cachedActs);
+            return;
+          } catch { }
+        }
+      }
+
+      const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
+      if (res.ok) {
+        const data = await res.json();
+        const acts = data.activities || [];
+        weekCacheRef.current.set(startStr, acts);
+        if (acts.length > 0 && typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+          } catch { }
+        }
+      }
+    } catch {
+      // Silent catch on background prefetch
+    }
   }, []);
 
   const fetchInitialTimetable = useCallback(async (monday: Date) => {
@@ -91,11 +124,34 @@ export function useTimetable() {
       }
       const acts = data.activities || [];
       weekCacheRef.current.set(startStr, acts);
+
+      // If today is Friday, Saturday, or Sunday, and all classes for this week are finished,
+      // advance to next week starting from Monday (as requested by user)
+      const now = new Date();
+      const day = now.getDay();
+      if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
+        const nowMs = now.getTime();
+        const hasUpcoming = acts.some((act: USOSActivity) => parseDate(act.end_time).getTime() > nowMs);
+        if (!hasUpcoming) {
+          const nextMonday = new Date(monday);
+          nextMonday.setDate(monday.getDate() + 7);
+          const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
+          if (startStr !== nextStartStr) {
+            try {
+              if (acts.length > 0) {
+                localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
+              }
+            } catch { }
+            navigateToWeek(nextMonday, 'fade');
+            return;
+          }
+        }
+      }
+
       setActivities(acts);
       setIsLive(data.isLive || false);
       setIsOfflineLoaded(false);
 
-      // Save offline snapshot in localStorage
       try {
         if (acts.length > 0) {
           localStorage.setItem(`usos_offline_timetable_${startStr}`, JSON.stringify(acts));
@@ -106,23 +162,45 @@ export function useTimetable() {
       } catch (storageErr) {
         console.warn('Could not cache timetable in localStorage:', storageErr);
       }
+
+      // Prefetch adjacent weeks in the background for instant navigation
+      const prevM = new Date(monday);
+      prevM.setDate(monday.getDate() - 7);
+      const nextM = new Date(monday);
+      nextM.setDate(monday.getDate() + 7);
+      prefetchWeek(prevM);
+      prefetchWeek(nextM);
     } catch (err: any) {
       console.warn('Error fetching timetable, attempting offline cache:', err);
 
-      // Try reading from offline cache for this week
       try {
         const cachedRaw = localStorage.getItem(`usos_offline_timetable_${startStr}`);
         if (cachedRaw) {
           const cachedActs = JSON.parse(cachedRaw);
           weekCacheRef.current.set(startStr, cachedActs);
+
+          const now = new Date();
+          const day = now.getDay();
+          if ((day === 5 || day === 6 || day === 0) && cachedActs.length > 0) {
+            const nowMs = now.getTime();
+            const hasUpcoming = cachedActs.some((act: any) => parseDate(act.end_time).getTime() > nowMs);
+            if (!hasUpcoming) {
+              const nextMonday = new Date(monday);
+              nextMonday.setDate(monday.getDate() + 7);
+              const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
+              if (startStr !== nextStartStr) {
+                navigateToWeek(nextMonday, 'fade');
+                return;
+              }
+            }
+          }
+
           setActivities(cachedActs);
           setIsOfflineLoaded(true);
-          setIsLive(true); // Allow viewing offline
+          setIsLive(true);
           setError(null);
           return;
         }
-
-        // If specific week not cached, search for any cached week so student isn't left empty-handed
         for (let i = 0; i < localStorage.length; i++) {
           const key = localStorage.key(i);
           if (key && key.startsWith('usos_offline_timetable_')) {
@@ -145,7 +223,7 @@ export function useTimetable() {
     } finally {
       setInitialLoading(false);
     }
-  }, []);
+  }, [prefetchWeek]);
 
   const navigateToWeek = useCallback(async (targetMonday: Date, direction: 'right' | 'left' | 'fade') => {
     const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
@@ -156,6 +234,14 @@ export function useTimetable() {
       setTransitionKey((prev) => prev + 1);
       setBaseMonday(targetMonday);
       setActivities(cached);
+
+      // Prefetch adjacent weeks for target
+      const prevM = new Date(targetMonday);
+      prevM.setDate(targetMonday.getDate() - 7);
+      const nextM = new Date(targetMonday);
+      nextM.setDate(targetMonday.getDate() + 7);
+      prefetchWeek(prevM);
+      prefetchWeek(nextM);
       return;
     }
 
@@ -181,7 +267,14 @@ export function useTimetable() {
           localStorage.setItem('usos_last_sync_time', nowIso);
           setLastSyncTime(nowIso);
         }
-      } catch {}
+      } catch { }
+
+      const prevM = new Date(targetMonday);
+      prevM.setDate(targetMonday.getDate() - 7);
+      const nextM = new Date(targetMonday);
+      nextM.setDate(targetMonday.getDate() + 7);
+      prefetchWeek(prevM);
+      prefetchWeek(nextM);
     } catch (err: any) {
       console.warn('Failed to navigate week via network, checking offline storage:', err);
       try {
@@ -196,13 +289,13 @@ export function useTimetable() {
           setIsOfflineLoaded(true);
           return;
         }
-      } catch {}
+      } catch { }
 
       setError(err.message || 'Nie udało się pobrać wybranego tygodnia');
     } finally {
       setIsNavigatingWeek(false);
     }
-  }, []);
+  }, [prefetchWeek]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -228,6 +321,9 @@ export function useTimetable() {
   }, [baseMonday, checkAuth, fetchInitialTimetable]);
 
   useEffect(() => {
+    if (initialFetchDoneRef.current) return;
+    initialFetchDoneRef.current = true;
+
     checkAuth();
     fetchInitialTimetable(baseMonday);
 
@@ -238,7 +334,7 @@ export function useTimetable() {
       } else if (typeof window !== 'undefined' && window.innerWidth < 768) {
         setViewMode('day');
       }
-    } catch {}
+    } catch { }
   }, [checkAuth, fetchInitialTimetable, baseMonday]);
 
   const handlePrevWeek = () => {
@@ -269,7 +365,7 @@ export function useTimetable() {
     setViewMode(mode);
     try {
       localStorage.setItem('usos_preferred_view', mode);
-    } catch {}
+    } catch { }
   };
 
   const filteredActivities = useMemo(() => {
@@ -364,6 +460,7 @@ export function useTimetable() {
     handlePrevWeek,
     handleNextWeek,
     handleToday,
+    navigateToWeek,
     handleCategoryChange,
     handleViewModeChange,
     handleExportICal,

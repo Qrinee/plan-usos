@@ -16,8 +16,8 @@ export const PRZ_BUILDINGS: Record<string, CampusBuildingInfo> = {
     name: 'Budynek V',
     fullName: 'Centrum Dydaktyczno-Konferencyjne (WEiI)',
     address: 'al. Powstańców Warszawy 12, Rzeszów',
-    lat: 50.0152,
-    lng: 21.9868,
+    lat: 50.019044,
+    lng: 21.989185,
   },
   L: {
     code: 'L',
@@ -27,13 +27,21 @@ export const PRZ_BUILDINGS: Record<string, CampusBuildingInfo> = {
     lat: 50.0215,
     lng: 21.9922,
   },
+  Ł: {
+    code: 'Ł',
+    name: 'Budynek Ł',
+    fullName: 'Centrum Sportu Akademickiego',
+    address: 'ul. Mazowiecka 4d, Rzeszów',
+    lat: 50.018317,
+    lng: 21.980238,
+  },
   A: {
-    code: 'Budynek A',
+    code: 'A',
     name: 'Budynek A',
     fullName: 'Gmach Główny Politechniki Rzeszowskiej (Rektorat)',
     address: 'al. Powstańców Warszawy 12, Rzeszów',
-    lat: 50.0163,
-    lng: 21.9855,
+    lat: 50.02687,
+    lng: 21.98532,
   },
   B: {
     code: 'B',
@@ -56,8 +64,8 @@ export const PRZ_BUILDINGS: Record<string, CampusBuildingInfo> = {
     name: 'Budynek D',
     fullName: 'Wydział Chemiczny / Elektrotechnika',
     address: 'al. Powstańców Warszawy 6, Rzeszów',
-    lat: 50.0181,
-    lng: 21.9882,
+    lat: 50.02596,
+    lng: 21.98364,
   },
   P: {
     code: 'P',
@@ -72,8 +80,8 @@ export const PRZ_BUILDINGS: Record<string, CampusBuildingInfo> = {
     name: 'Budynek S',
     fullName: 'Centrum Sportu Akademickiego (Hala)',
     address: 'ul. Poznańska 2a, Rzeszów',
-    lat: 50.0141,
-    lng: 21.9818,
+    lat: 50.019336,
+    lng: 21.987342,
   },
   O: {
     code: 'O',
@@ -91,9 +99,16 @@ export const PRZ_BUILDINGS: Record<string, CampusBuildingInfo> = {
     lat: 50.0148,
     lng: 21.9832,
   },
+  F: {
+    code: 'F',
+    name: 'Budynek F',
+    fullName: 'Wydział Elektrotechniki i Informatyki',
+    address: 'ul. B. Prusa 12, Rzeszów',
+    lat: 50.02606,
+    lng: 21.98345,
+  },
 };
 
-// Distance matrix (in meters) between PRz campus buildings
 const DISTANCE_MATRIX: Record<string, Record<string, number>> = {
   V: { L: 850, A: 280, B: 340, C: 420, D: 490, P: 250, S: 720, O: 790, K: 680 },
   L: { V: 850, A: 820, B: 760, C: 690, D: 620, P: 890, S: 1350, O: 1420, K: 1280 },

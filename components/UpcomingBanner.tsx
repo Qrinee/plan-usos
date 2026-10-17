@@ -39,7 +39,6 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
       setIsAppleDevice(isApple);
     }
 
-    // Refresh every 10 seconds for real-time progress and timers
     const timer = setInterval(() => {
       setNow(new Date());
     }, 10000);
@@ -123,11 +122,11 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
       <div className="w-full apple-card rounded-3xl p-4 sm:p-5 flex items-center justify-between border border-black/[0.04] dark:border-white/[0.06] shadow-sm">
         <div className="flex items-center space-x-3.5">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-            <Sparkles className="w-6 h-6" />
+            <Coffee className="w-6 h-6" />
           </div>
           <div>
             <h4 className="text-sm font-semibold text-[#1d1d1f] dark:text-[#f5f5f7]">
-              Dzień wolny od zajęć! ☀️
+              Dzień wolny od zajęć!
             </h4>
             <p className="text-xs text-[#86868b] mt-0.5">
               Brak zaplanowanych zajęć na dziś w Twoim harmonogramie.
@@ -166,7 +165,6 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
 
   return (
     <div className="w-full space-y-2.5">
-      {/* 1. Main Live / Upcoming Class Card */}
       {act ? (
         <div
           onClick={() => onSelectActivity(act)}
@@ -185,11 +183,10 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center space-x-1.5 sm:space-x-2 flex-wrap">
                   <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      isOngoing
-                        ? 'bg-[#fa243c]/15 text-[#fa243c]'
-                        : 'bg-black/[0.05] dark:bg-white/[0.08] text-[#86868b]'
-                    }`}
+                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${isOngoing
+                      ? 'bg-[#fa243c]/15 text-[#fa243c]'
+                      : 'bg-black/[0.05] dark:bg-white/[0.08] text-[#86868b]'
+                      }`}
                   >
                     {nextInfo?.label}
                   </span>
@@ -224,7 +221,6 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
             </div>
           </div>
 
-          {/* Ongoing class progress bar */}
           {isOngoing && (
             <div className="mt-3 pt-2.5 border-t border-black/[0.04] dark:border-white/[0.05]">
               <div className="flex items-center justify-between text-[11px] text-[#86868b] mb-1 font-medium">
@@ -258,27 +254,24 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
         </div>
       )}
 
-      {/* 2. Campus Transit Assistant (Przejście między budynkami) */}
       {transit && (
         <div
-          className={`w-full rounded-2xl p-3.5 sm:p-4 border transition-all duration-300 shadow-xs ${
-            transit.urgency === 'critical'
-              ? 'bg-rose-500/[0.08] border-rose-500/30 text-rose-700 dark:text-rose-300'
-              : transit.urgency === 'tight'
+          className={`w-full rounded-2xl p-3.5 sm:p-4 border transition-all duration-300 shadow-xs ${transit.urgency === 'critical'
+            ? 'bg-rose-500/[0.08] border-rose-500/30 text-rose-700 dark:text-rose-300'
+            : transit.urgency === 'tight'
               ? 'bg-amber-500/[0.08] border-amber-500/30 text-amber-700 dark:text-amber-300'
               : 'bg-emerald-500/[0.06] border-emerald-500/20 text-emerald-800 dark:text-emerald-300'
-          }`}
+            }`}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start space-x-3 min-w-0">
               <div
-                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
-                  transit.urgency === 'critical'
-                    ? 'bg-rose-500 text-white'
-                    : transit.urgency === 'tight'
+                className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${transit.urgency === 'critical'
+                  ? 'bg-rose-500 text-white'
+                  : transit.urgency === 'tight'
                     ? 'bg-amber-500 text-white'
                     : 'bg-emerald-500 text-white'
-                }`}
+                  }`}
               >
                 {transit.urgency === 'critical' ? (
                   <AlertTriangle className="w-4 h-4 animate-bounce" />
@@ -294,13 +287,12 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
                   </span>
 
                   <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      transit.urgency === 'critical'
-                        ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
-                        : transit.urgency === 'tight'
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${transit.urgency === 'critical'
+                      ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
+                      : transit.urgency === 'tight'
                         ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
                         : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-                    }`}
+                      }`}
                   >
                     Przerwa: {transit.breakMinutes} min • Spacer: ~{transit.walkingMinutes} min
                   </span>
@@ -338,7 +330,6 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
         </div>
       )}
 
-      {/* 3. Pasek Postępu Dnia (Day Progress & Stats Bar) */}
       {!daySummary.hasNoClassesToday && (
         <div className="w-full apple-card rounded-2xl p-3 sm:p-4 border border-black/[0.04] dark:border-white/[0.06] shadow-xs">
           <div className="flex items-center justify-between text-xs text-[#86868b] mb-2 font-medium flex-wrap gap-2">
@@ -368,7 +359,6 @@ export const UpcomingBanner: React.FC<UpcomingBannerProps> = ({
             </div>
           </div>
 
-          {/* Progress bar container */}
           <div className="w-full h-2 rounded-full bg-black/[0.05] dark:bg-white/[0.08] overflow-hidden p-0.5">
             <div
               className="h-full rounded-full bg-gradient-to-r from-[#fa243c] via-[#fb5c74] to-[#34c759] transition-all duration-700 ease-out shadow-xs"

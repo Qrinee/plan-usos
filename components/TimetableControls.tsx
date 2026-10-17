@@ -95,7 +95,9 @@ export const TimetableControls: React.FC<TimetableControlsProps> = ({
         )}
 
         <div className="flex items-center justify-between md:justify-start space-x-2 sm:space-x-2.5">
-          <div className="flex items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] p-0.5 shrink-0">
+          <div className={`items-center rounded-full bg-black/[0.04] dark:bg-white/[0.08] p-0.5 shrink-0 ${
+            viewMode === 'day' ? 'hidden sm:flex' : 'flex'
+          }`}>
             <button
               onClick={onPrevWeek}
               disabled={isNavigatingWeek}

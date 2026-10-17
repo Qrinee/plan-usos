@@ -68,13 +68,11 @@ export const LiveStatusBar: React.FC<LiveStatusBarProps> = ({
       </div>
 
       <div className="flex items-center space-x-2 sm:space-x-3 text-[11px]">
-        {/* Offline / Online badge */}
         <div
-          className={`flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full font-medium transition-all ${
-            isOperatingOffline
-              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-              : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-          }`}
+          className={`flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full font-medium transition-all ${isOperatingOffline
+            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+            : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+            }`}
         >
           {isOperatingOffline ? (
             <>
@@ -84,7 +82,7 @@ export const LiveStatusBar: React.FC<LiveStatusBarProps> = ({
           ) : (
             <>
               <Wifi className="w-3 h-3 shrink-0" />
-              <span>Połączono z USOS</span>
+              <span>Online</span>
             </>
           )}
         </div>
