@@ -1,6 +1,10 @@
-# 🎓 Plan Zajęć USOS • Politechnika Rzeszowska
+# 🎓 Plan Zajęć USOS 
 
-Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji planu zajęć, zintegrowana z oficjalnym **USOS API Politechniki Rzeszowskiej** ([usosapps.prz.edu.pl](https://usosapps.prz.edu.pl/developers/api/)).
+Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji planu zajęć, zintegrowana z oficjalnym **USOS API**
+
+<img width="1917" height="945" alt="sa" src="https://github.com/user-attachments/assets/09c0e269-adc0-4ed7-a756-a062618500cc" />
+<img width="301" height="722" alt="image" src="https://github.com/user-attachments/assets/fd1989df-9371-4705-bedd-46c021a88ea0" />
+
 
 ---
 
@@ -40,12 +44,12 @@ Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji
 ## 🚀 Uruchomienie Lokalne
 
 Aplikacja jest uruchomiona pod adresem:
-👉 **`http://localhost:3001/`**
+👉 **`http://localhost:3000/`**
 
 Aby uruchomić aplikację w dowolnym momencie:
 ```bash
 cd usos
-npm run dev -- -p 3001
+npm run dev
 ```
 
 Budowanie wersji produkcyjnej:
