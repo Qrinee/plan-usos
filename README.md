@@ -1,4 +1,4 @@
-# 🎓 Plan Zajęć USOS • Politechnika Rzeszowska
+# 🎓 Plan Zajęć USOS 
 
 Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji planu zajęć, zintegrowana z oficjalnym **USOS API**
 
