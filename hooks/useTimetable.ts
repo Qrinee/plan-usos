@@ -1,19 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { USOSActivity, USOSUser } from '@/lib/usos/types';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { USOSActivity } from '@/lib/usos/types';
 import { generateICalendar } from '@/lib/usos/ical';
 import { getMonday, getInitialMonday, parseDate } from '@/lib/utils/date';
-import { ViewMode } from '@/components/TimetableControls';
-
-const TIMETABLE_CACHE_PREFIX = 'usos_offline_timetable_v3_';
-
-function getIsMobileDevice(): boolean {
-  if (typeof window === 'undefined') return false;
-  const isMobileUA = /Android|iPhone|iPod|Mobile/i.test(navigator.userAgent);
-  const isNarrow = window.innerWidth < 768;
-  return isMobileUA || isNarrow;
-}
+import {
+  cleanLegacyTimetableCaches,
+  getSavedSyncTime,
+  saveSyncTime,
+  getCachedWeekActivities,
+  saveCachedWeekActivities,
+  getAnyFallbackActivities,
+} from '@/lib/timetable/timetableStorage';
+import { useViewPreferences } from './timetable/useViewPreferences';
+import { useTimetableAuth } from './timetable/useTimetableAuth';
+import { useTimetableFilter } from './timetable/useTimetableFilter';
 
 export function useTimetable() {
   const [baseMonday, setBaseMonday] = useState<Date>(() => getInitialMonday());
@@ -21,21 +22,14 @@ export function useTimetable() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [authBanner, setAuthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const weekCacheRef = useRef<Map<string, USOSActivity[]>>(new Map());
-  const lastIsMobileRef = useRef<boolean | null>(null);
+  const initialFetchDoneRef = useRef(false);
 
-  const [isLive, setIsLive] = useState(false);
-  const [user, setUser] = useState<USOSUser | null>(null);
   const [isOfflineLoaded, setIsOfflineLoaded] = useState<boolean>(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [showWeekend, setShowWeekend] = useState<boolean>(false);
-
   const [slideDirection, setSlideDirection] = useState<'right' | 'left' | 'fade'>('fade');
   const [transitionKey, setTransitionKey] = useState<number>(0);
 
@@ -43,74 +37,37 @@ export function useTimetable() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  const triggerTransition = useCallback(() => {
+    setSlideDirection('fade');
+    setTransitionKey((prev) => prev + 1);
+  }, []);
+
+  const { viewMode, setViewMode, handleViewModeChange } = useViewPreferences(triggerTransition);
+
+  const {
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    filteredActivities,
+    handleCategoryChange,
+  } = useTimetableFilter(activities, triggerTransition);
+
   useEffect(() => {
-    try {
-      // Clear legacy caches that did not include lecturer details
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('usos_offline_timetable_') && !key.startsWith(TIMETABLE_CACHE_PREFIX)) {
-          localStorage.removeItem(key);
-        }
-      }
-
-      const savedSync = localStorage.getItem('usos_last_sync_time');
-      if (savedSync) setLastSyncTime(savedSync);
-
-      const cachedUser = localStorage.getItem('usos_cached_user');
-      if (cachedUser) {
-        const parsed = JSON.parse(cachedUser);
-        if (parsed) setUser(parsed);
-      }
-    } catch { }
+    cleanLegacyTimetableCaches();
+    const savedSync = getSavedSyncTime();
+    if (savedSync) setLastSyncTime(savedSync);
   }, []);
-
-  const checkAuth = useCallback(async () => {
-    try {
-      const res = await fetch('/api/auth/status');
-      if (res.ok) {
-        const data = await res.json();
-        const authed = data.authenticated && data.mode === 'live';
-        setIsLive(authed);
-        setUser(data.user || null);
-        if (data.user) {
-          try {
-            localStorage.setItem('usos_cached_user', JSON.stringify(data.user));
-          } catch { }
-        }
-        return authed;
-      }
-    } catch (err) {
-      console.warn('Failed checking auth status, falling back to cached user:', err);
-      try {
-        const cachedUser = localStorage.getItem('usos_cached_user');
-        if (cachedUser) {
-          setUser(JSON.parse(cachedUser));
-          setIsLive(true);
-        }
-      } catch { }
-    }
-    return false;
-  }, []);
-
-  const initialFetchDoneRef = useRef(false);
 
   const prefetchWeek = useCallback(async (monday: Date) => {
     const startStr = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
     if (weekCacheRef.current.has(startStr)) return;
 
     try {
-      if (typeof window !== 'undefined') {
-        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
-        if (cachedRaw) {
-          try {
-            const cachedActs = JSON.parse(cachedRaw);
-            const hasLecturers = cachedActs.some((a: any) => (a.lecturer_names && a.lecturer_names.length > 0) || (a.lecturers && a.lecturers.length > 0));
-            if (hasLecturers) {
-              weekCacheRef.current.set(startStr, cachedActs);
-              return;
-            }
-          } catch { }
-        }
+      const cached = getCachedWeekActivities(startStr, true);
+      if (cached) {
+        weekCacheRef.current.set(startStr, cached);
+        return;
       }
 
       const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
@@ -120,11 +77,7 @@ export function useTimetable() {
           const acts = data.activities || [];
           if (acts.length > 0) {
             weekCacheRef.current.set(startStr, acts);
-            if (typeof window !== 'undefined') {
-              try {
-                localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
-              } catch { }
-            }
+            saveCachedWeekActivities(startStr, acts);
           }
         }
       }
@@ -133,72 +86,144 @@ export function useTimetable() {
     }
   }, []);
 
-  const fetchInitialTimetable = useCallback(async (monday: Date) => {
-    setInitialLoading(true);
-    setError(null);
-    const startStr = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
+  const navigateToWeek = useCallback(
+    async (targetMonday: Date, direction: 'right' | 'left' | 'fade') => {
+      const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
 
-    try {
-      const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
-      if (!res.ok) {
-        throw new Error(`Błąd pobierania planu lekcji (${res.status})`);
-      }
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      }
-      const acts = data.activities || [];
-      weekCacheRef.current.set(startStr, acts);
+      const cached = weekCacheRef.current.get(startStr);
+      const hasLecturers =
+        cached &&
+        cached.some((a: any) => (a.lecturer_names && a.lecturer_names.length > 0) || (a.lecturers && a.lecturers.length > 0));
 
-      const now = new Date();
-      const day = now.getDay();
-      if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
-        const nowMs = now.getTime();
-        const hasUpcoming = acts.some((act: USOSActivity) => parseDate(act.end_time).getTime() > nowMs);
-        if (!hasUpcoming) {
-          const nextMonday = new Date(monday);
-          nextMonday.setDate(monday.getDate() + 7);
-          const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
-          if (startStr !== nextStartStr) {
-            try {
-              if (acts.length > 0) {
-                localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
-              }
-            } catch { }
-            navigateToWeek(nextMonday, 'fade');
-            return;
-          }
-        }
+      if (cached && cached.length > 0 && hasLecturers) {
+        setSlideDirection(direction);
+        setTransitionKey((prev) => prev + 1);
+        setBaseMonday(targetMonday);
+        setActivities(cached);
+
+        const prevM = new Date(targetMonday);
+        prevM.setDate(targetMonday.getDate() - 7);
+        const nextM = new Date(targetMonday);
+        nextM.setDate(targetMonday.getDate() + 7);
+        prefetchWeek(prevM);
+        prefetchWeek(nextM);
+        return;
       }
 
-      setActivities(acts);
-      setIsLive(data.isLive || false);
-      setIsOfflineLoaded(false);
-
+      setIsNavigatingWeek(true);
       try {
-        if (acts.length > 0) {
-          localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(acts));
+        const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
+        if (!res.ok) throw new Error(`Błąd pobierania (${res.status})`);
+        const data = await res.json();
+        if (data.error) {
+          setError(data.error);
+        }
+        const newActs = data.activities || [];
+        if (data.isLive !== false && !data.error) {
+          weekCacheRef.current.set(startStr, newActs);
+        }
+
+        setSlideDirection(direction);
+        setTransitionKey((prev) => prev + 1);
+        setBaseMonday(targetMonday);
+        setActivities(newActs);
+        if (data.isLive !== undefined) setIsLive(data.isLive);
+        setIsOfflineLoaded(false);
+
+        if (newActs.length > 0) {
+          saveCachedWeekActivities(startStr, newActs);
           const nowIso = new Date().toISOString();
-          localStorage.setItem('usos_last_sync_time', nowIso);
+          saveSyncTime(nowIso);
           setLastSyncTime(nowIso);
         }
-      } catch (storageErr) {
-        console.warn('Could not cache timetable in localStorage:', storageErr);
-      }
 
-      const prevM = new Date(monday);
-      prevM.setDate(monday.getDate() - 7);
-      const nextM = new Date(monday);
-      nextM.setDate(monday.getDate() + 7);
-      prefetchWeek(prevM);
-      prefetchWeek(nextM);
-    } catch (err: any) {
-      console.warn('Error fetching timetable, attempting offline cache:', err);
+        const prevM = new Date(targetMonday);
+        prevM.setDate(targetMonday.getDate() - 7);
+        const nextM = new Date(targetMonday);
+        nextM.setDate(targetMonday.getDate() + 7);
+        prefetchWeek(prevM);
+        prefetchWeek(nextM);
+      } catch (err: any) {
+        console.warn('Failed to navigate week via network, checking offline storage:', err);
+        const cachedRawActs = getCachedWeekActivities(startStr, false);
+        if (cachedRawActs) {
+          weekCacheRef.current.set(startStr, cachedRawActs);
+          setSlideDirection(direction);
+          setTransitionKey((prev) => prev + 1);
+          setBaseMonday(targetMonday);
+          setActivities(cachedRawActs);
+          setIsOfflineLoaded(true);
+          return;
+        }
+
+        setError(err.message || 'Nie udało się pobrać wybranego tygodnia');
+      } finally {
+        setIsNavigatingWeek(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prefetchWeek]
+  );
+
+  const fetchInitialTimetable = useCallback(
+    async (monday: Date) => {
+      setInitialLoading(true);
+      setError(null);
+      const startStr = `${monday.getFullYear()}-${(monday.getMonth() + 1).toString().padStart(2, '0')}-${monday.getDate().toString().padStart(2, '0')}`;
 
       try {
-        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
-        if (cachedRaw) {
-          const cachedActs = JSON.parse(cachedRaw);
+        const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
+        if (!res.ok) {
+          throw new Error(`Błąd pobierania planu lekcji (${res.status})`);
+        }
+        const data = await res.json();
+        if (data.error) {
+          setError(data.error);
+        }
+        const acts = data.activities || [];
+        weekCacheRef.current.set(startStr, acts);
+
+        const now = new Date();
+        const day = now.getDay();
+        if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
+          const nowMs = now.getTime();
+          const hasUpcoming = acts.some((act: USOSActivity) => parseDate(act.end_time).getTime() > nowMs);
+          if (!hasUpcoming) {
+            const nextMonday = new Date(monday);
+            nextMonday.setDate(monday.getDate() + 7);
+            const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
+            if (startStr !== nextStartStr) {
+              if (acts.length > 0) {
+                saveCachedWeekActivities(startStr, acts);
+              }
+              navigateToWeek(nextMonday, 'fade');
+              return;
+            }
+          }
+        }
+
+        setActivities(acts);
+        setIsLive(data.isLive || false);
+        setIsOfflineLoaded(false);
+
+        if (acts.length > 0) {
+          saveCachedWeekActivities(startStr, acts);
+          const nowIso = new Date().toISOString();
+          saveSyncTime(nowIso);
+          setLastSyncTime(nowIso);
+        }
+
+        const prevM = new Date(monday);
+        prevM.setDate(monday.getDate() - 7);
+        const nextM = new Date(monday);
+        nextM.setDate(monday.getDate() + 7);
+        prefetchWeek(prevM);
+        prefetchWeek(nextM);
+      } catch (err: any) {
+        console.warn('Error fetching timetable, attempting offline cache:', err);
+
+        const cachedActs = getCachedWeekActivities(startStr, false);
+        if (cachedActs) {
           weekCacheRef.current.set(startStr, cachedActs);
 
           const now = new Date();
@@ -223,129 +248,29 @@ export function useTimetable() {
           setError(null);
           return;
         }
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith(TIMETABLE_CACHE_PREFIX)) {
-            const fallbackRaw = localStorage.getItem(key);
-            if (fallbackRaw) {
-              const fallbackActs = JSON.parse(fallbackRaw);
-              setActivities(fallbackActs);
-              setIsOfflineLoaded(true);
-              setIsLive(true);
-              setError(null);
-              return;
-            }
-          }
-        }
-      } catch (cacheErr) {
-        console.error('Failed reading offline cache:', cacheErr);
-      }
 
-      setError(err.message || 'Brak połączenia z siecią. Włącz internet, aby pobrać plan.');
-    } finally {
-      setInitialLoading(false);
-    }
-  }, [prefetchWeek]);
-
-  const navigateToWeek = useCallback(async (targetMonday: Date, direction: 'right' | 'left' | 'fade') => {
-    const startStr = `${targetMonday.getFullYear()}-${(targetMonday.getMonth() + 1).toString().padStart(2, '0')}-${targetMonday.getDate().toString().padStart(2, '0')}`;
-
-    const cached = weekCacheRef.current.get(startStr);
-    const hasLecturers = cached && cached.some((a: any) => (a.lecturer_names && a.lecturer_names.length > 0) || (a.lecturers && a.lecturers.length > 0));
-    if (cached && cached.length > 0 && hasLecturers) {
-      setSlideDirection(direction);
-      setTransitionKey((prev) => prev + 1);
-      setBaseMonday(targetMonday);
-      setActivities(cached);
-
-      const prevM = new Date(targetMonday);
-      prevM.setDate(targetMonday.getDate() - 7);
-      const nextM = new Date(targetMonday);
-      nextM.setDate(targetMonday.getDate() + 7);
-      prefetchWeek(prevM);
-      prefetchWeek(nextM);
-      return;
-    }
-
-    setIsNavigatingWeek(true);
-    try {
-      const res = await fetch(`/api/usos/timetable?start=${startStr}&days=7`);
-      if (!res.ok) throw new Error(`Błąd pobierania (${res.status})`);
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      }
-      const newActs = data.activities || [];
-      if (data.isLive !== false && !data.error) {
-        weekCacheRef.current.set(startStr, newActs);
-      }
-
-      setSlideDirection(direction);
-      setTransitionKey((prev) => prev + 1);
-      setBaseMonday(targetMonday);
-      setActivities(newActs);
-      if (data.isLive !== undefined) setIsLive(data.isLive);
-      setIsOfflineLoaded(false);
-
-      try {
-        if (newActs.length > 0) {
-          localStorage.setItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`, JSON.stringify(newActs));
-          const nowIso = new Date().toISOString();
-          localStorage.setItem('usos_last_sync_time', nowIso);
-          setLastSyncTime(nowIso);
-        }
-      } catch { }
-
-      const prevM = new Date(targetMonday);
-      prevM.setDate(targetMonday.getDate() - 7);
-      const nextM = new Date(targetMonday);
-      nextM.setDate(targetMonday.getDate() + 7);
-      prefetchWeek(prevM);
-      prefetchWeek(nextM);
-    } catch (err: any) {
-      console.warn('Failed to navigate week via network, checking offline storage:', err);
-      try {
-        const cachedRaw = localStorage.getItem(`${TIMETABLE_CACHE_PREFIX}${startStr}`);
-        if (cachedRaw) {
-          const cachedActs = JSON.parse(cachedRaw);
-          weekCacheRef.current.set(startStr, cachedActs);
-          setSlideDirection(direction);
-          setTransitionKey((prev) => prev + 1);
-          setBaseMonday(targetMonday);
-          setActivities(cachedActs);
+        const fallbackActs = getAnyFallbackActivities();
+        if (fallbackActs) {
+          setActivities(fallbackActs);
           setIsOfflineLoaded(true);
+          setIsLive(true);
+          setError(null);
           return;
         }
-      } catch { }
 
-      setError(err.message || 'Nie udało się pobrać wybranego tygodnia');
-    } finally {
-      setIsNavigatingWeek(false);
-    }
-  }, [prefetchWeek]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const auth = params.get('auth');
-      const authError = params.get('auth_error');
-
-      if (auth === 'success') {
-        setAuthBanner({
-          type: 'success',
-          message: 'Pomyślnie połączono z USOS Politechniki Rzeszowskiej!',
-        });
-        window.history.replaceState({}, '', '/');
-        checkAuth().then(() => fetchInitialTimetable(baseMonday));
-      } else if (authError) {
-        setAuthBanner({
-          type: 'error',
-          message: `Błąd autoryzacji USOS: ${decodeURIComponent(authError).replace(/_/g, ' ')}`,
-        });
-        window.history.replaceState({}, '', '/');
+        setError(err.message || 'Brak połączenia z siecią. Włącz internet, aby pobrać plan.');
+      } finally {
+        setInitialLoading(false);
       }
-    }
-  }, [baseMonday, checkAuth, fetchInitialTimetable]);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [navigateToWeek, prefetchWeek]
+  );
+
+  const { isLive, setIsLive, user, authBanner, setAuthBanner, checkAuth, handleLogout: authLogout } =
+    useTimetableAuth(() => {
+      fetchInitialTimetable(baseMonday);
+    });
 
   useEffect(() => {
     if (initialFetchDoneRef.current) return;
@@ -353,43 +278,7 @@ export function useTimetable() {
 
     checkAuth();
     fetchInitialTimetable(baseMonday);
-
-    try {
-      const isMobile = getIsMobileDevice();
-      lastIsMobileRef.current = isMobile;
-      const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
-      const defaultMode: ViewMode = isMobile ? 'day' : 'week';
-
-      // Usuń stary, wspólny klucz jeśli istnieje, by telefon nie odziedziczył 'week'
-      localStorage.removeItem('usos_preferred_view');
-
-      const savedView = localStorage.getItem(storageKey) as ViewMode | null;
-      if (savedView && (savedView === 'week' || savedView === 'day' || savedView === 'list')) {
-        setViewMode(savedView);
-      } else {
-        setViewMode(defaultMode);
-      }
-    } catch { }
   }, [checkAuth, fetchInitialTimetable, baseMonday]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const isMobile = getIsMobileDevice();
-      if (lastIsMobileRef.current !== null && isMobile !== lastIsMobileRef.current) {
-        lastIsMobileRef.current = isMobile;
-        const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
-        const saved = localStorage.getItem(storageKey) as ViewMode | null;
-        if (saved && (saved === 'week' || saved === 'day' || saved === 'list')) {
-          setViewMode(saved);
-        } else {
-          setViewMode(isMobile ? 'day' : 'week');
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const handlePrevWeek = () => {
     const next = new Date(baseMonday);
@@ -407,61 +296,6 @@ export function useTimetable() {
     navigateToWeek(getMonday(new Date()), 'fade');
   };
 
-  const handleCategoryChange = (cat: string) => {
-    setSlideDirection('fade');
-    setTransitionKey((prev) => prev + 1);
-    setSelectedCategory(cat);
-  };
-
-  const handleViewModeChange = (mode: ViewMode) => {
-    setSlideDirection('fade');
-    setTransitionKey((prev) => prev + 1);
-    setViewMode(mode);
-    try {
-      const isMobile = getIsMobileDevice();
-      const storageKey = isMobile ? 'usos_preferred_view_mobile' : 'usos_preferred_view_desktop';
-      localStorage.setItem(storageKey, mode);
-    } catch { }
-  };
-
-  const filteredActivities = useMemo(() => {
-    return activities.filter((act) => {
-      if (selectedCategory !== 'all') {
-        const cat = act.category || '';
-        const classtypeStr = (
-          typeof act.classtype_name === 'object'
-            ? act.classtype_name?.pl || ''
-            : act.classtype_name || ''
-        ).toLowerCase();
-
-        if (cat !== selectedCategory && !classtypeStr.includes(selectedCategory)) {
-          return false;
-        }
-      }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const name = (typeof act.name === 'object' ? act.name?.pl || '' : act.name || '').toLowerCase();
-        const courseId = (act.course_id || '').toLowerCase();
-        const room = (act.room_number || '').toLowerCase();
-        const lecturers = (act.lecturer_names || []).join(' ').toLowerCase();
-        const note = (act.note || '').toLowerCase();
-
-        if (
-          !name.includes(q) &&
-          !courseId.includes(q) &&
-          !room.includes(q) &&
-          !lecturers.includes(q) &&
-          !note.includes(q)
-        ) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [activities, selectedCategory, searchQuery]);
-
   const handleExportICal = () => {
     if (!activities || activities.length === 0) return;
     const icsContent = generateICalendar(activities, 'Plan Lekcji Politechnika Rzeszowska USOS');
@@ -477,11 +311,9 @@ export function useTimetable() {
   };
 
   const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setIsLive(false);
-    setUser(null);
-    checkAuth();
-    fetchInitialTimetable(baseMonday);
+    await authLogout(() => {
+      fetchInitialTimetable(baseMonday);
+    });
   };
 
   return {

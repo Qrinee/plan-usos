@@ -16,10 +16,10 @@ export const WALLPAPER_PRESETS: WallpaperPreset[] = [
   },
   {
     id: 'sequoia-mist',
-    name: 'Sequoia Forest',
+    name: 'Neon Forest',
     category: 'Natura',
-    url: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=2560&q=85',
-    thumb: 'https://images.unsplash.com/photo-1511497584788-87676104235f?auto=format&fit=crop&w=400&q=75',
+    url: 'https://i.imgur.com/GVIHcvz.jpeg',
+    thumb: 'https://i.imgur.com/GVIHcvz.jpeg',
   },
   {
     id: 'crimson-aura',

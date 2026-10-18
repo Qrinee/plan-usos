@@ -1,20 +1,18 @@
 'use client';
 
 import React from 'react';
-import { AlertCircle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { TimetableControls } from '@/components/TimetableControls';
 import { TimetableWeekView } from '@/components/TimetableWeekView';
 import { TimetableDayView } from '@/components/TimetableDayView';
 import { TimetableListView } from '@/components/TimetableListView';
-import { ClassDetailModal } from '@/components/ClassDetailModal';
-import { ApiSettingsModal } from '@/components/ApiSettingsModal';
-import { CourseSearchModal } from '@/components/CourseSearchModal';
-import { WallpaperModal } from '@/components/WallpaperModal';
-import { PwaInstallPrompt } from '@/components/PwaInstallPrompt';
 import { UnauthHeroCard } from '@/components/UnauthHeroCard';
 import { EmptyWeekCard } from '@/components/EmptyWeekCard';
 import { Footer } from '@/components/Footer';
+import { WallpaperBackground } from '@/components/layout/WallpaperBackground';
+import { AuthBanner } from '@/components/layout/AuthBanner';
+import { TimetableModals } from '@/components/layout/TimetableModals';
 import { useTheme } from '@/hooks/useTheme';
 import { useWallpaper } from '@/hooks/useWallpaper';
 import { useTimetable } from '@/hooks/useTimetable';
@@ -65,37 +63,18 @@ export default function TimetablePage() {
 
   return (
     <div
-      className={`min-h-screen pt-safe-top md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
-        }`}
+      className={`min-h-screen pt-safe-top md:pt-0 flex flex-col relative transition-colors duration-300 text-[#1d1d1f] dark:text-[#f5f5f7] ${
+        customBg ? 'bg-transparent' : 'bg-[#fbfbfd] dark:bg-[#000000]'
+      }`}
     >
-      {/* Background Layer: Custom Image Wallpaper or Dynamic Aura */}
-      {customBg ? (
-        <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-          <div
-            className="absolute -inset-6 bg-cover bg-center bg-no-repeat transition-all duration-700 ease-out"
-            style={{
-              backgroundImage: `url(${customBg})`,
-              filter: `blur(${bgBlur}px)`,
-              transform: 'scale(1.06)',
-            }}
-          />
-          <div
-            className="absolute inset-0 transition-colors duration-500"
-            style={{
-              backgroundColor: darkMode
-                ? `rgba(0, 0, 0, ${bgDim / 100})`
-                : `rgba(255, 255, 255, ${Math.min(0.65, (bgDim / 100) * 0.7)})`,
-            }}
-          />
-        </div>
-      ) : (
-        <div className="apple-music-aura">
-          <div className="apple-music-aura-1" />
-          <div className="apple-music-aura-2" />
-        </div>
-      )}
+      <WallpaperBackground
+        customBg={customBg}
+        bgBlur={bgBlur}
+        bgDim={bgDim}
+        darkMode={darkMode}
+      />
 
-      {/* Top Navbar for Desktop (Computer) */}
+      {/* Top Navbar for Desktop */}
       <div className="hidden md:block w-full sticky top-0 z-40">
         <Navbar
           isLive={isLive}
@@ -112,39 +91,17 @@ export default function TimetablePage() {
 
       {/* Main Content Area */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3.5 sm:py-5 pb-[calc(8.5rem+env(safe-area-inset-bottom,0px))] md:pb-10 space-y-3 sm:space-y-4">
-        {/* Auth Notification Banner */}
         {authBanner && (
-          <div
-            className={`p-3.5 px-4 rounded-2xl apple-glass border text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-300 ${authBanner.type === 'success'
-              ? 'border-[#34c759]/30 text-[#34c759] bg-[#34c759]/[0.08]'
-              : 'border-[#ff3b30]/30 text-[#ff3b30] bg-[#ff3b30]/[0.08]'
-              }`}
-          >
-            <div className="flex items-center space-x-2">
-              {authBanner.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-[#34c759] shrink-0" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-[#ff3b30] shrink-0" />
-              )}
-              <span className="font-medium text-[#1d1d1f] dark:text-[#f5f5f7]">
-                {authBanner.message}
-              </span>
-            </div>
-            <button
-              onClick={() => setAuthBanner(null)}
-              className="text-[11px] font-medium px-2 py-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 text-[#86868b] cursor-pointer"
-            >
-              Zamknij
-            </button>
-          </div>
+          <AuthBanner
+            banner={authBanner}
+            onClose={() => setAuthBanner(null)}
+          />
         )}
 
-        {/* Landing Hero when unauthenticated */}
         {!isLive && !initialLoading ? (
           <UnauthHeroCard onConnect={() => setIsSettingsOpen(true)} />
         ) : (
           <>
-            {/* Error Notification */}
             {error && (
               <div className="p-3.5 px-4 rounded-2xl apple-glass border border-[#ff3b30]/30 bg-[#ff3b30]/[0.06] text-[#ff3b30] text-xs flex items-center justify-between shadow-xs">
                 <div className="flex items-center space-x-2">
@@ -161,7 +118,6 @@ export default function TimetablePage() {
               </div>
             )}
 
-            {/* Initial Loading Spinner */}
             {initialLoading ? (
               <div className="py-28 flex flex-col items-center justify-center space-y-3">
                 <div className="w-7 h-7 rounded-full border-2 border-[#fa243c] border-t-transparent animate-spin" />
@@ -236,7 +192,6 @@ export default function TimetablePage() {
         )}
       </main>
 
-      {/* Sticky Mobile Floating Controls Dock */}
       <TimetableControls
         viewMode={viewMode}
         setViewMode={handleViewModeChange}
@@ -246,35 +201,24 @@ export default function TimetablePage() {
         onOpenWallpaper={() => setIsWallpaperModalOpen(true)}
       />
 
-      {/* Footer */}
       <Footer />
 
-      {/* Modals and Overlays */}
-      <ClassDetailModal
-        activity={selectedActivity}
-        onClose={() => setSelectedActivity(null)}
-      />
-
-      <ApiSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+      <TimetableModals
+        selectedActivity={selectedActivity}
+        onCloseActivity={() => setSelectedActivity(null)}
+        isSettingsOpen={isSettingsOpen}
+        onCloseSettings={() => setIsSettingsOpen(false)}
         isLive={isLive}
         user={user}
         onLogout={handleLogout}
-        onRefresh={() => {
+        onRefreshAuth={() => {
           checkAuth();
           fetchInitialTimetable(baseMonday);
         }}
-      />
-
-      <CourseSearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-      />
-
-      <WallpaperModal
-        isOpen={isWallpaperModalOpen}
-        onClose={() => setIsWallpaperModalOpen(false)}
+        isSearchOpen={isSearchOpen}
+        onCloseSearch={() => setIsSearchOpen(false)}
+        isWallpaperModalOpen={isWallpaperModalOpen}
+        onCloseWallpaper={() => setIsWallpaperModalOpen(false)}
         customBg={customBg}
         onSetCustomBg={handleSetCustomBg}
         bgBlur={bgBlur}
@@ -284,8 +228,6 @@ export default function TimetablePage() {
         darkMode={darkMode}
         setDarkMode={toggleDarkMode}
       />
-
-      <PwaInstallPrompt />
     </div>
   );
 }

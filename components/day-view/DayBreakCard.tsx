@@ -48,7 +48,7 @@ export const DayBreakCard: React.FC<DayBreakCardProps> = ({
         animationDelay: `${Math.min(bIdx * 35, 150)}ms`,
       }}
     >
-      <div className="flex items-center justify-between text-[11px] gap-2">
+      <div className="flex items-center justify-between text-[11px] gap-2 sticky top-0 bg-inherit">
         <div className="flex items-center space-x-1.5 font-medium truncate">
           <Coffee className="w-3.5 h-3.5 shrink-0" />
           <span className="font-semibold">

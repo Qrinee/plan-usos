@@ -62,7 +62,6 @@ export const DayActivityCard: React.FC<DayActivityCardProps> = ({
         animationDelay: `${Math.min(itemIdx * 40, 200)}ms`,
       }}
     >
-      {/* Top Row: Time, Classtype Badge, Status */}
       <div className="flex items-center justify-between gap-1 text-[11px] leading-tight">
         <div className="flex items-center space-x-1.5 font-semibold">
           <span
