@@ -3,6 +3,7 @@
 Nowoczesna, interaktywna aplikacja internetowa do przeglądania i synchronizacji planu zajęć, zintegrowana z oficjalnym **USOS API**
 
 <img width="1917" height="945" alt="sa" src="https://github.com/user-attachments/assets/09c0e269-adc0-4ed7-a756-a062618500cc" />
+<img width="301" height="722" alt="image" src="https://github.com/user-attachments/assets/fd1989df-9371-4705-bedd-46c021a88ea0" />
 
 
 ---
