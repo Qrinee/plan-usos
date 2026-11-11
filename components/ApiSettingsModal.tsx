@@ -111,11 +111,13 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-4 text-xs">
-          {isLive && user ? (
+          {user ? (
             <ApiConnectedCard
               user={user}
+              isLive={isLive}
               onRefresh={onRefresh}
               onLogout={onLogout}
+              onReauth={handleStartOAuth}
             />
           ) : (
             <div className="p-4 rounded-2xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.06] space-y-1.5">
@@ -136,7 +138,7 @@ export const ApiSettingsModal: React.FC<ApiSettingsModalProps> = ({
             </div>
           )}
 
-          {!isLive && (
+          {!user && (
             <div className="space-y-4 pt-2">
               <ApiConnectButton
                 loading={loading}

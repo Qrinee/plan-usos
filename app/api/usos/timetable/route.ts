@@ -23,16 +23,15 @@ export async function GET(req: NextRequest) {
       const result = await fetchLiveTimetable(session, start, days);
 
       if (result.status === 401) {
-        const resp = NextResponse.json(
+        return NextResponse.json(
           {
             error: result.error,
             activities: [],
             isLive: false,
+            sessionExpired: true,
           },
           { status: 401 }
         );
-        resp.cookies.delete('usos_session');
-        return resp;
       }
 
       if (result.status === 502) {

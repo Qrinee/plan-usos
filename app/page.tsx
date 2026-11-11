@@ -98,10 +98,27 @@ export default function TimetablePage() {
           />
         )}
 
-        {!isLive && !initialLoading ? (
+        {(!isLive && !user && filteredActivities.length === 0 && !initialLoading) ? (
           <UnauthHeroCard onConnect={() => setIsSettingsOpen(true)} />
         ) : (
           <>
+            {!isLive && (user || filteredActivities.length > 0) && !initialLoading && (
+              <div className="p-2.5 px-3.5 rounded-2xl apple-glass border border-amber-500/20 bg-amber-500/[0.06] text-amber-700 dark:text-amber-300 text-xs flex items-center justify-between shadow-xs">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                  <span>
+                    Pracujesz z zapisanym planem zajęć (tryb offline / cache).
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="text-xs font-semibold underline hover:opacity-80 cursor-pointer ml-3 shrink-0"
+                >
+                  Odśwież USOS
+                </button>
+              </div>
+            )}
+
             {error && (
               <div className="p-3.5 px-4 rounded-2xl apple-glass border border-[#ff3b30]/30 bg-[#ff3b30]/[0.06] text-[#ff3b30] text-xs flex items-center justify-between shadow-xs">
                 <div className="flex items-center space-x-2">

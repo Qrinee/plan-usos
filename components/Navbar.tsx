@@ -104,16 +104,24 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Actions */}
         <div className="flex items-center space-x-1.5 sm:space-x-2">
-          {isLive && user && (
+          {user && (
             <button
               onClick={onOpenSettings}
-              className="hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-500/[0.08] dark:bg-emerald-500/[0.15] text-emerald-700 dark:text-emerald-400 text-xs font-medium hover:bg-emerald-500/[0.14] transition-all cursor-pointer"
-              title="Zarządzaj kontem USOS"
+              className={`hidden md:flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                isLive
+                  ? 'bg-emerald-500/[0.08] dark:bg-emerald-500/[0.15] text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/[0.14]'
+                  : 'bg-amber-500/[0.08] dark:bg-amber-500/[0.15] text-amber-700 dark:text-amber-400 hover:bg-amber-500/[0.14]'
+              }`}
+              title={isLive ? 'Połączono z USOS PRZ na żywo' : 'Zapisany profil USOS (tryb offline)'}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                  isLive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`}
+              />
               <span>{user.first_name} {user.last_name}</span>
               {user.student_number && (
-                <span className="text-emerald-600/70 dark:text-emerald-400/70 text-[11px]">({user.student_number})</span>
+                <span className="opacity-70 text-[11px]">({user.student_number})</span>
               )}
             </button>
           )}
@@ -165,7 +173,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center space-x-1.5 px-3 py-1.5 sm:px-3.5 sm:py-1.5 min-h-[36px] rounded-full bg-[#fa243c] hover:bg-[#e11d48] text-white text-xs font-medium transition-all shadow-xs hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           >
             <Settings className="w-3.5 h-3.5" />
-            <span className="inline">{isLive ? 'Konto' : 'Połącz'}</span>
+            <span className="inline">{isLive ? 'Konto' : user ? 'Offline' : 'Połącz'}</span>
           </button>
         </div>
       </div>

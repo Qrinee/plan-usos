@@ -5,13 +5,22 @@ import { USOSUser } from '@/lib/usos/types';
 import { getCachedUser, saveCachedUser } from '@/lib/timetable/timetableStorage';
 
 export function useTimetableAuth(onAuthSuccess?: () => void) {
-  const [isLive, setIsLive] = useState(false);
-  const [user, setUser] = useState<USOSUser | null>(null);
+  const [isLive, setIsLive] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return !!getCachedUser();
+  });
+  const [user, setUser] = useState<USOSUser | null>(() => {
+    if (typeof window === 'undefined') return null;
+    return getCachedUser();
+  });
   const [authBanner, setAuthBanner] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     const cached = getCachedUser();
-    if (cached) setUser(cached);
+    if (cached) {
+      setUser(cached);
+      setIsLive(true);
+    }
   }, []);
 
   const checkAuth = useCallback(async () => {
@@ -21,9 +30,16 @@ export function useTimetableAuth(onAuthSuccess?: () => void) {
         const data = await res.json();
         const authed = data.authenticated && data.mode === 'live';
         setIsLive(authed);
-        setUser(data.user || null);
         if (data.user) {
+          setUser(data.user);
           saveCachedUser(data.user);
+        } else {
+          const cached = getCachedUser();
+          if (cached) {
+            setUser(cached);
+          } else {
+            setUser(null);
+          }
         }
         return authed;
       }
@@ -65,13 +81,19 @@ export function useTimetableAuth(onAuthSuccess?: () => void) {
 
   const handleLogout = useCallback(
     async (afterLogout?: () => void) => {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+      } catch (e) {
+        console.warn('Logout request failed:', e);
+      }
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('usos_cached_user');
+      }
       setIsLive(false);
       setUser(null);
-      checkAuth();
       afterLogout?.();
     },
-    [checkAuth]
+    []
   );
 
   return {

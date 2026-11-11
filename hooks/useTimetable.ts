@@ -18,15 +18,46 @@ import { useTimetableFilter } from './timetable/useTimetableFilter';
 
 export function useTimetable() {
   const [baseMonday, setBaseMonday] = useState<Date>(() => getInitialMonday());
-  const [activities, setActivities] = useState<USOSActivity[]>([]);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [activities, setActivities] = useState<USOSActivity[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const initialM = getInitialMonday();
+      const s = `${initialM.getFullYear()}-${(initialM.getMonth() + 1).toString().padStart(2, '0')}-${initialM.getDate().toString().padStart(2, '0')}`;
+      const cached = getCachedWeekActivities(s, false);
+      if (cached && cached.length > 0) return cached;
+      return getAnyFallbackActivities() || [];
+    } catch {
+      return [];
+    }
+  });
+  const [initialLoading, setInitialLoading] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const initialM = getInitialMonday();
+      const s = `${initialM.getFullYear()}-${(initialM.getMonth() + 1).toString().padStart(2, '0')}-${initialM.getDate().toString().padStart(2, '0')}`;
+      const cached = getCachedWeekActivities(s, false) || getAnyFallbackActivities();
+      return !cached || cached.length === 0;
+    } catch {
+      return true;
+    }
+  });
   const [isNavigatingWeek, setIsNavigatingWeek] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const weekCacheRef = useRef<Map<string, USOSActivity[]>>(new Map());
   const initialFetchDoneRef = useRef(false);
 
-  const [isOfflineLoaded, setIsOfflineLoaded] = useState<boolean>(false);
+  const [isOfflineLoaded, setIsOfflineLoaded] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const initialM = getInitialMonday();
+      const s = `${initialM.getFullYear()}-${(initialM.getMonth() + 1).toString().padStart(2, '0')}-${initialM.getDate().toString().padStart(2, '0')}`;
+      const cached = getCachedWeekActivities(s, false) || getAnyFallbackActivities();
+      return !!(cached && cached.length > 0);
+    } catch {
+      return false;
+    }
+  });
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
 
   const [showWeekend, setShowWeekend] = useState<boolean>(false);
@@ -181,36 +212,49 @@ export function useTimetable() {
           setError(data.error);
         }
         const acts = data.activities || [];
-        weekCacheRef.current.set(startStr, acts);
-
-        const now = new Date();
-        const day = now.getDay();
-        if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
-          const nowMs = now.getTime();
-          const hasUpcoming = acts.some((act: USOSActivity) => parseDate(act.end_time).getTime() > nowMs);
-          if (!hasUpcoming) {
-            const nextMonday = new Date(monday);
-            nextMonday.setDate(monday.getDate() + 7);
-            const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
-            if (startStr !== nextStartStr) {
-              if (acts.length > 0) {
-                saveCachedWeekActivities(startStr, acts);
-              }
-              navigateToWeek(nextMonday, 'fade');
-              return;
-            }
-          }
-        }
-
-        setActivities(acts);
-        setIsLive(data.isLive || false);
-        setIsOfflineLoaded(false);
 
         if (acts.length > 0) {
+          weekCacheRef.current.set(startStr, acts);
+
+          const now = new Date();
+          const day = now.getDay();
+          if ((day === 5 || day === 6 || day === 0) && acts.length > 0) {
+            const nowMs = now.getTime();
+            const hasUpcoming = acts.some((act: USOSActivity) => parseDate(act.end_time).getTime() > nowMs);
+            if (!hasUpcoming) {
+              const nextMonday = new Date(monday);
+              nextMonday.setDate(monday.getDate() + 7);
+              const nextStartStr = `${nextMonday.getFullYear()}-${(nextMonday.getMonth() + 1).toString().padStart(2, '0')}-${nextMonday.getDate().toString().padStart(2, '0')}`;
+              if (startStr !== nextStartStr) {
+                saveCachedWeekActivities(startStr, acts);
+                navigateToWeek(nextMonday, 'fade');
+                return;
+              }
+            }
+          }
+
+          setActivities(acts);
+          setIsLive(data.isLive || false);
+          setIsOfflineLoaded(false);
+
           saveCachedWeekActivities(startStr, acts);
           const nowIso = new Date().toISOString();
           saveSyncTime(nowIso);
           setLastSyncTime(nowIso);
+        } else if (!data.isLive) {
+          const cachedActs = getCachedWeekActivities(startStr, false) || getAnyFallbackActivities();
+          if (cachedActs && cachedActs.length > 0) {
+            setActivities(cachedActs);
+            setIsOfflineLoaded(true);
+            setIsLive(false);
+          } else {
+            setActivities([]);
+            setIsLive(false);
+          }
+        } else {
+          setActivities([]);
+          setIsLive(true);
+          setIsOfflineLoaded(false);
         }
 
         const prevM = new Date(monday);

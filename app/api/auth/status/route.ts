@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
       accessTokenSecret: string;
       consumerKey: string;
       consumerSecret: string;
+      user?: any;
     };
 
     try {
@@ -40,6 +41,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // If user profile is already stored in the session cookie, return immediately without network overhead
+    if (session.user && session.user.id) {
+      return NextResponse.json({
+        authenticated: true,
+        user: session.user,
+        mode: 'live',
+      });
+    }
+
     const client = new USOSOAuthClient();
     const res = await client.signedRequest({
       url: 'services/users/user',
@@ -57,13 +67,12 @@ export async function GET(req: NextRequest) {
       console.warn(`USOS users/user returned ${res.status}: ${errText}`);
 
       if (res.status === 401) {
-        const resp = NextResponse.json({
+        return NextResponse.json({
           authenticated: false,
           user: null,
-          mode: 'none',
+          mode: 'expired',
+          sessionExpired: true,
         });
-        resp.cookies.delete('usos_session');
-        return resp;
       }
 
       return NextResponse.json({
@@ -81,19 +90,37 @@ export async function GET(req: NextRequest) {
     }
 
     const userData = await res.json();
+    const formattedUser = {
+      id: userData.id,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      student_number: userData.student_number || '',
+      email: userData.email || '',
+      faculty: 'Politechnika Rzeszowska',
+    };
 
-    return NextResponse.json({
+    // Update cookie with user profile so future requests don't need to call USOS API again
+    const updatedSession = JSON.stringify({
+      ...session,
+      user: formattedUser,
+    });
+
+    const isHttps = req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production';
+    const resp = NextResponse.json({
       authenticated: true,
-      user: {
-        id: userData.id,
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        student_number: userData.student_number || '',
-        email: userData.email || '',
-        faculty: 'Politechnika Rzeszowska',
-      },
+      user: formattedUser,
       mode: 'live',
     });
+
+    resp.cookies.set('usos_session', updatedSession, {
+      httpOnly: true,
+      secure: isHttps,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+      path: '/',
+    });
+
+    return resp;
   } catch (error: any) {
     console.error('USOS Status error:', error);
     return NextResponse.json(

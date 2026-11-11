@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     const callbackUrl = `${origin}/api/auth/callback`;
 
     const client = new USOSOAuthClient();
-    const scopes = process.env.USOS_SCOPES || 'studies';
+    const scopes = process.env.USOS_SCOPES || 'studies|offline_access';
 
     const { oauth_token, oauth_token_secret } = await client.getRequestToken({
       consumerKey,

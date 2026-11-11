@@ -55,22 +55,52 @@ export async function GET(req: NextRequest) {
         oauthVerifier: oauth_verifier,
       });
 
+    let userProfile: any = null;
+    try {
+      const userRes = await client.signedRequest({
+        url: 'services/users/user',
+        consumerKey,
+        consumerSecret,
+        token: accessToken,
+        tokenSecret: accessTokenSecret,
+        params: {
+          fields: 'id|first_name|last_name|student_number|email',
+        },
+      });
+      if (userRes.ok) {
+        const u = await userRes.json();
+        userProfile = {
+          id: u.id,
+          first_name: u.first_name,
+          last_name: u.last_name,
+          student_number: u.student_number || '',
+          email: u.email || '',
+          faculty: 'Politechnika Rzeszowska',
+        };
+      }
+    } catch (uErr) {
+      console.warn('Could not prefetch user profile during auth callback:', uErr);
+    }
+
     const sessionData = JSON.stringify({
       accessToken,
       accessTokenSecret,
       consumerKey,
       consumerSecret,
+      user: userProfile,
     });
 
     const redirectResponse = NextResponse.redirect(new URL('/?auth=success', req.url));
 
     redirectResponse.cookies.delete('usos_temp_oauth');
 
+    const isHttps = req.nextUrl.protocol === 'https:' || process.env.NODE_ENV === 'production';
+
     redirectResponse.cookies.set('usos_session', sessionData, {
       httpOnly: true,
-      secure: false,
+      secure: isHttps,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: 60 * 60 * 24 * 365, // 1 year
       path: '/',
     });
 
