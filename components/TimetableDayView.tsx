@@ -6,6 +6,7 @@ import { USOSActivity } from '@/lib/usos/types';
 import { ViewMode } from '@/components/TimetableControls';
 import { DayRibbon } from './day-view/DayRibbon';
 import { DayTimeline } from './day-view/DayTimeline';
+import { DayAgendaList } from './day-view/DayAgendaList';
 import { DayViewHeader } from './day-view/DayViewHeader';
 import { DayViewEmptyState } from './day-view/DayViewEmptyState';
 import { useDayViewNavigation } from './day-view/useDayViewNavigation';
@@ -88,6 +89,20 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  const [layoutMode, setLayoutMode] = useState<'agenda' | 'timeline'>(() => {
+    if (typeof window === 'undefined') return 'agenda';
+    const saved = localStorage.getItem('usos_day_layout_mode');
+    if (saved === 'agenda' || saved === 'timeline') return saved;
+    return window.innerWidth < 768 ? 'agenda' : 'timeline';
+  });
+
+  const handleLayoutModeChange = (mode: 'agenda' | 'timeline') => {
+    setLayoutMode(mode);
+    try {
+      localStorage.setItem('usos_day_layout_mode', mode);
+    } catch {}
+  };
+
   const activeDayActivities = useMemo(() => {
     return activities
       .filter((act) => act.start_time.substring(0, 10) === selectedDateStr)
@@ -168,6 +183,8 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
           activityCount={activeDayActivities.length}
           isNavigatingWeek={isNavigatingWeek}
           now={now}
+          layoutMode={layoutMode}
+          onLayoutModeChange={handleLayoutModeChange}
         />
 
         {/* Skeleton loading overlay when week is actively fetching */}
@@ -181,12 +198,19 @@ export const TimetableDayView: React.FC<TimetableDayViewProps> = ({
 
         {/* Content Container */}
         <div
-          key={`day-content-${selectedDateStr}`}
+          key={`day-content-${selectedDateStr}-${layoutMode}`}
           className={daySlideAnim || 'anim-timeline-enter'}
           onAnimationEnd={() => setDaySlideAnim('')}
         >
           {activeDayActivities.length === 0 ? (
             <DayViewEmptyState />
+          ) : layoutMode === 'agenda' ? (
+            <DayAgendaList
+              activities={activeDayActivities}
+              now={now}
+              isToday={Boolean(activeDay?.isToday)}
+              onSelectActivity={onSelectActivity}
+            />
           ) : (
             <DayTimeline
               activities={activeDayActivities}
